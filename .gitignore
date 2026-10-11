@@ -1,0 +1,13 @@
+node_modules/
+dist/
+.env*
+!.env.example
+private-audit/
+recovered/
+test-results/
+playwright-report/
+*.log
+*.pem
+*service-account*.json
+*Credentials.json
+backups/
