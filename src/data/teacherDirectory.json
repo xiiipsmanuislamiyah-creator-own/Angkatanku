@@ -1,0 +1,162 @@
+[
+  {
+    "id": "guru-1",
+    "nama": "ABDUL HOLIK S.Ag.",
+    "username": "@abdul_holik",
+    "title": "Kepala Madrasah",
+    "jabatan": "Kepala Madrasah",
+    "role": "Kepala Madrasah"
+  },
+  {
+    "id": "guru-2",
+    "nama": "ANIS KOMARIYAH S.Pd.",
+    "username": "@anis_komariyah",
+    "title": "Operator Sekolah",
+    "jabatan": "Bendahara BOS",
+    "role": "Bendahara BOS"
+  },
+  {
+    "id": "guru-3",
+    "nama": "BAYU HERU SUSANTO",
+    "username": "@bayu_heru",
+    "title": "Guru",
+    "jabatan": "Guru Pengajar",
+    "role": "Dewan Pendidik"
+  },
+  {
+    "id": "guru-4",
+    "nama": "DIAH SAVITRI KUSUMANINGRUM",
+    "username": "@diah_savitri",
+    "title": "Guru",
+    "jabatan": "Guru Pengajar",
+    "role": "Dewan Pendidik"
+  },
+  {
+    "id": "guru-5",
+    "nama": "ELY RUFIANA",
+    "username": "@ely_rufiana",
+    "title": "Guru",
+    "jabatan": "Guru Pengajar",
+    "role": "Dewan Pendidik"
+  },
+  {
+    "id": "guru-6",
+    "nama": "FAUZAN HASANI S.Pd.",
+    "username": "@fauzan_hasani",
+    "title": "Guru",
+    "jabatan": "Guru Pengajar",
+    "role": "Dewan Pendidik"
+  },
+  {
+    "id": "guru-7",
+    "nama": "FIRZHA NURITA RIZKIANDINI",
+    "username": "@firzha_nurita",
+    "title": "Guru",
+    "jabatan": "Guru Pengajar",
+    "role": "Dewan Pendidik"
+  },
+  {
+    "id": "guru-8",
+    "nama": "IBNU RUSLAN NURUS ZAMAN S.Hum.",
+    "username": "@ibnu_ruslan",
+    "title": "Wakil Kepala Madrasah",
+    "jabatan": "Waka Bidang Kurikulum",
+    "role": "Waka Kurikulum"
+  },
+  {
+    "id": "guru-9",
+    "nama": "IMROATUL HASANAH",
+    "username": "@imroatul_hasanah",
+    "title": "Guru",
+    "jabatan": "Guru Pengajar",
+    "role": "Dewan Pendidik"
+  },
+  {
+    "id": "guru-10",
+    "nama": "ITQINANA SU`UDIYAH",
+    "username": "@itqinana_suudiyah",
+    "title": "Guru",
+    "jabatan": "Guru Pengajar",
+    "role": "Dewan Pendidik"
+  },
+  {
+    "id": "guru-11",
+    "nama": "LIA AFIFA AL MAGHFIROH",
+    "username": "@lia_afifa",
+    "title": "Guru",
+    "jabatan": "Guru Pengajar",
+    "role": "Dewan Pendidik"
+  },
+  {
+    "id": "guru-12",
+    "nama": "LINDA ARNILYA S.Pd.",
+    "username": "@linda_arnilya",
+    "title": "Guru",
+    "jabatan": "Guru Pengajar",
+    "role": "Dewan Pendidik"
+  },
+  {
+    "id": "guru-13",
+    "nama": "MISTINANINGSIH S.Pd.",
+    "username": "@mistinaningsih",
+    "title": "Guru",
+    "jabatan": "Guru Pengajar",
+    "role": "Dewan Pendidik"
+  },
+  {
+    "id": "guru-14",
+    "nama": "MOH. HUSNAN S.HI.",
+    "username": "@moh_husnan",
+    "title": "Wakil Kepala Madrasah",
+    "jabatan": "Waka Bidang Kesiswaan",
+    "role": "Waka Kesiswaan"
+  },
+  {
+    "id": "guru-15",
+    "nama": "MUFTI HAFIYANA S.Pd.",
+    "username": "@mufti_hafiyana",
+    "title": "Guru",
+    "jabatan": "Guru Pengajar",
+    "role": "Dewan Pendidik"
+  },
+  {
+    "id": "guru-16",
+    "nama": "NURUL LAILATUL QODRIYAH",
+    "username": "@nurul_lailatul",
+    "title": "Guru",
+    "jabatan": "Guru Pengajar",
+    "role": "Dewan Pendidik"
+  },
+  {
+    "id": "guru-17",
+    "nama": "NURUL QOMARIYAH S.Pd.",
+    "username": "@nurul_qomariyah",
+    "title": "Guru Mata Pelajaran",
+    "jabatan": "Guru Pengajar",
+    "role": "Guru Pengajar"
+  },
+  {
+    "id": "guru-18",
+    "nama": "SARAH ATIKA DEWI",
+    "username": "@sarah_atika",
+    "title": "Guru",
+    "jabatan": "Guru Pengajar",
+    "role": "Dewan Pendidik"
+  },
+  {
+    "id": "guru-19",
+    "nama": "ZAKIYATUL MASRURAH S.Pd.",
+    "username": "@zakiyatul_masrurah",
+    "title": "Guru",
+    "jabatan": "Wali Kelas XII IPS 1",
+    "role": "Wali Kelas XII IPS 1"
+  },
+  {
+    "id": "guru-20",
+    "nama": "Drs. H. ALWI",
+    "username": "@drs_h_alwi",
+    "title": "Guru Pengajar",
+    "jabatan": "Guru Pengajar",
+    "role": "Dewan Pendidik"
+  }
+]

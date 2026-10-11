@@ -1,0 +1,6 @@
+{
+  "name": "AngkatanKU",
+  "description": "Portal digital & wadah kenangan angkatan XII IPS MA NU Islamiyah Asembagus yang terus diperbarui.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
