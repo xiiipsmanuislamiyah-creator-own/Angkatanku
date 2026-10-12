@@ -13,12 +13,12 @@ Diperbarui 12 Oktober 2026. Implementasi dan verifikasi lokal selesai; cutover p
 - [x] Tutup akses Firestore langsung; amankan media/upload/delete dan AI.
 - [x] Migrasi mempertahankan UID/ID profil, backup AES-GCM, rollback dengan pemeriksaan konflik, GC media dengan tombstone.
 - [x] Pemetaan read-only 56 akun source; 18 akun Auth lain tidak diubah. Periksa dua contoh kartu CDN, bukan seluruh inventaris.
-- [x] TypeScript/build, 36 tes unit/API, 3 emulator, 10 browser, audit dependency dan pemeriksaan bundle.
+- [x] TypeScript/build, 36 tes unit/API, 3 emulator, 10 browser, 1 runtime produksi via HTTPS lokal, audit dependency dan pemeriksaan bundle.
 - [x] Dokumentasi hasil, keterbatasan dan runbook cutover. Tidak ada operasi tulis produksi.
 
 ## Gate produksi belum selesai
 
-- [ ] Akses deployment Node/Cloud Run proyek. Vercel menolak target project (403), termasuk query team; service account Firebase menolak inventaris Cloud Run (403).
+- [ ] Akses deployment Node/Cloud Run proyek. Vercel menolak target project (403), termasuk query team; Cloud Run API nonaktif (SERVICE_DISABLED); pemeriksaan IAM terpisah mengonfirmasi tidak adanya izin aktivasi/deployment pada kredensial yang tersedia. Lihat docs/DEPLOYMENT_STATUS.md.
 - [ ] Rotasi secret terekspos, pembatasan key publik, pencabutan akses lama setelah cutover berhasil.
 - [ ] Verifikasi provider Cloudinary upload/authenticated delivery/delete serta Gemini nyata dengan dummy pada lingkungan terisolasi.
 - [ ] Backup produksi/rules aktif; migrasi dan penerbitan ulang kredensial/kartu privat. Password terekspos tidak diaktifkan kembali.

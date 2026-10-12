@@ -10,6 +10,7 @@ Daftar ini membandingkan file runtime, konfigurasi, tes dan dokumentasi yang dis
 | `PLAN.md` | Diubah |
 | `README.md` | Diubah |
 | `docs/CHANGED_FILES.md` | Baru |
+| `docs/DEPLOYMENT_STATUS.md` | Baru |
 | `docs/MIGRATION_ROLLBACK.md` | Baru |
 | `docs/RECOVERY.md` | Baru |
 | `docs/SECURITY_REPORT_ID.md` | Baru |
@@ -80,6 +81,7 @@ Daftar ini membandingkan file runtime, konfigurasi, tes dan dokumentasi yang dis
 | `src/pages/TentangWeb.tsx` | Diubah |
 | `src/vite-env.d.ts` | Diubah |
 | `tests/compatibility.test.ts` | Baru |
+| `tests/deployment/runtime.test.ts` | Baru |
 | `tests/e2e-server.ts` | Baru |
 | `tests/e2e/security.spec.ts` | Baru |
 | `tests/emulator/firestore.test.ts` | Baru |

@@ -17,6 +17,8 @@ npm run build
 
 npm run test:rules menjalankan emulator terisolasi demo-angkatanku. Sediakan JAVA_BIN dan FIRESTORE_EMULATOR_JAR dari emulator resmi Firebase. npm run test:e2e menjalankan fixture server di port 4173; gunakan npx playwright install chromium atau set PLAYWRIGHT_CHROMIUM_EXECUTABLE ke Chromium kompatibel. Semua akun dummy dan provider Cloudinary/Gemini tiruan; tidak ada tes tulis produksi.
 
+npm run test:deployment membangun aplikasi lalu menjalankan entrypoint produksi melalui HTTPS lokal dan emulator dengan rules aktual. Memerlukan Java/emulator, Chromium, dan OpenSSL; tidak memerlukan key provider produksi.
+
 Untuk lokal, salin .env.example ke .env, sesuaikan origin/emulator, lalu npm run dev. Akun berasal dari seed/migrasi server; tidak ada password development universal atau signup publik. npm run preview hanya menyajikan build statis, bukan server aplikasi lengkap.
 
 ## Runtime
@@ -35,5 +37,6 @@ Produksi memerlukan layanan Node HTTPS dengan kapasitas upload/proxy yang sesuai
 - [Daftar perubahan source](docs/CHANGED_FILES.md)
 - [Spesifikasi aktual](security_spec.md)
 - [Rencana dan gate produksi](PLAN.md)
+- [Diagnosis akses deployment terbaru](docs/DEPLOYMENT_STATUS.md)
 
 Kredensial, QR login nyata, manifest akun dan backup tidak masuk Git. Rotasi secret terekspos tetap diperlukan meskipun telah dihapus dari kode terbaru.

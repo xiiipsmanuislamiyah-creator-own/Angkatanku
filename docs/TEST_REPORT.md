@@ -11,6 +11,7 @@ Tanggal: 12 Oktober 2026. Hasil diulang pada source yang dipulihkan dan diperbai
 | npm run test:rules | 3/3 lulus | Emulator Firestore resmi 1.22.0, Java 21, project demo-angkatanku |
 | npm run build | Lulus, exit 0 | Vite 6.4.3 + esbuild, 2.188 modul |
 | npm run test:e2e | 10/10 lulus; 0 flaky/skipped | Chromium headless, Playwright 1.56.1, build aktual |
+| npm run test:deployment | 1/1 lulus | Entrypoint produksi asli, HTTPS lokal, Chromium, Firestore emulator + deny-all rules |
 | npm audit --json | 0 advisory | Critical/high/moderate/low/info semuanya 0 pada lockfile saat pemeriksaan |
 | Scan nilai rahasia dikenal | 0 kecocokan | 60 nilai dikenal terhadap 131 file source/dokumen/build saat scan; bukan seluruh sejarah Git |
 
@@ -53,10 +54,18 @@ Tiga kasus tambahan di atas mula-mula direproduksi dengan tes yang gagal pada im
 
 Browser memblokir jaringan eksternal dan menggunakan database/provider fixture. Tes render layar bukan pembuktian seluruh fungsi bisnis setiap layar. Kamera fisik, Safari/Firefox, perangkat nyata, embedding AI Studio dengan cookie pihak ketiga, aksesibilitas menyeluruh, load/soak dan performa produksi belum diuji.
 
+## Tambahan verifikasi entrypoint produksi
+
+Pada kelanjutan 12 Oktober 2026, npm run test:deployment membangun aplikasi dan menjalankan scripts/start-production.mjs melalui proxy HTTPS lokal dengan sertifikat dummy. Firestore emulator memakai rules repo dan akun dummy. Test lulus; setelah rules dipasang eksplisit, tes runtime dan ketiga tes emulator diulang serta lulus. TypeScript juga lulus. Tidak ada perubahan kode aplikasi sejak 49 tes sebelumnya; tambahan ini menjadikan total **50 tes**.
+
+Browser memverifikasi login lewat UI build asli, cookie __Host-angkatan_session Secure/HttpOnly/SameSite=Strict yang tidak terbaca oleh document.cookie, sesi tetap ada setelah reload, write profil ke Firestore melalui API, member ditolak pada API owner, Origin asing ditolak, logout menghapus sesi/cookie. Request ke /.env, /dist/server/server.mjs dan /server.ts hanya menerima halaman SPA, bukan isi file server/secret. Launcher emulator kini menganggap proses tes yang berakhir karena sinyal sebagai gagal, bukan lulus.
+
+Sertifikat/port/database tes lokal tidak membuktikan konfigurasi TLS, ingress, IAM atau provider deployment nyata. Pengujian provider eksternal tetap terpisah.
+
 ## Read-only eksternal dan yang belum diverifikasi
 
 Firebase Auth dan Firestore REST berhasil dibaca untuk pemetaan agregat; dua kartu CDN berhasil diambil/didekode. Tidak melakukan login akun nyata atau perubahan data. Firebase Admin gRPC ke produksi tidak menyelesaikan pembacaan di lingkungan ini; audit menggunakan REST. CLI migrasi produksi tidak diklaim sudah berjalan.
 
-Vercel project lookup, termasuk team slug, mendapat HTTP 403; Cloud Run services list pada project terkait mendapat 403 PERMISSION_DENIED. Backend HTTPS, IAM deployment, Cloudinary upload/private delivery/delete nyata, Gemini generation nyata, rotasi key, backup produksi dan cutover belum terverifikasi. Provider dummy tidak membuktikan konfigurasi provider produksi.
+Vercel project lookup, termasuk team slug, mendapat HTTP 403; Cloud Run services list mendapat 403 dengan alasan SERVICE_DISABLED. Resource Manager projects.get dan testIamPermissions berikutnya berhasil (200), tetapi dari delapan izin yang diminta hanya resourcemanager.projects.get dikembalikan; izin aktivasi API/deployment tidak tersedia. Lihat DEPLOYMENT_STATUS.md. Backend HTTPS pada hosting nyata, IAM deployment, Cloudinary upload/private delivery/delete nyata, Gemini generation nyata, rotasi key, backup produksi dan cutover belum terverifikasi. Provider dummy tidak membuktikan konfigurasi provider produksi.
 
 Peringatan build yang tersisa hanya import data.ts yang sekaligus statis/dinamis (tidak menghasilkan chunk terpisah). Tidak ada error TypeScript atau build. Hasil dependency audit bersifat pada saat dijalankan, bukan jaminan tidak ada kerentanan baru.

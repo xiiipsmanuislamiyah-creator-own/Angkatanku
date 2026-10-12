@@ -13,6 +13,7 @@
     "test": "node --import tsx --test tests/*.test.ts",
     "test:rules": "node --import tsx scripts/test-emulator.ts",
     "test:e2e": "playwright test",
+    "test:deployment": "npm run build && node --import tsx scripts/test-emulator.ts --production",
     "migrate:security": "node --import tsx scripts/migrate-security.ts",
     "media:gc": "node --import tsx scripts/media-gc.ts"
   },

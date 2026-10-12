@@ -59,10 +59,11 @@ Backup terenkripsi dan rollback dengan pemeriksaan konflik telah diuji pada emul
 | Firestore emulator | 3/3 lulus, termasuk 108 penolakan request langsung |
 | Build frontend/server | Lulus |
 | Browser Chromium | 10/10 lulus, 0 flaky/skipped |
+| Entrypoint produksi via HTTPS lokal + emulator | 1/1 lulus |
 | Dependency audit | 0 advisory pada lockfile yang diperiksa |
 | Scan 60 nilai rahasia dikenal | 0 kecocokan dalam source/build yang diperiksa |
 
-Tes mencakup login salah/benar, QR/manual, session/logout/revoke, brute force, role escalation, akses lintas profil, guest private access, direct Firestore/API, forged localStorage, file validation, ownership/audience, DM reports, AI quotas, migrasi/rollback dan regresi layar existing. Kartu PNG unduhan didekode kembali secara otomatis. Mobile/desktop diuji pada lebar 320/390/768/1280 px.
+Tes mencakup login salah/benar, QR/manual, session/logout/revoke, brute force, role escalation, akses lintas profil, guest private access, direct Firestore/API, forged localStorage, file validation, ownership/audience, DM reports, AI quotas, migrasi/rollback dan regresi layar existing. Total kini 50 tes. Tambahan tes menjalankan entrypoint build produksi melalui HTTPS lokal dengan emulator/rules aktual untuk membuktikan cookie aman, login, write dan logout pada runtime asli. Kartu PNG unduhan didekode kembali secara otomatis. Mobile/desktop diuji pada lebar 320/390/768/1280 px.
 
 Lihat [TEST_REPORT.md](TEST_REPORT.md) untuk cakupan, kegagalan yang diperbaiki dan batas bukti. Tidak meminta pemilik menjalankan tes manual.
 
@@ -70,7 +71,7 @@ Lihat [TEST_REPORT.md](TEST_REPORT.md) untuk cakupan, kegagalan yang diperbaiki 
 
 **Produksi masih berisiko:** kontrol baru belum terpasang dan secret/kartu publik lama belum dicabut. Menghapus nilai dari kode terbaru tidak menghapus Git history, link publik, cache atau salinan yang sudah beredar. Public Maps key yang ditemukan pada checkpoint sebelumnya sudah dihapus dari source terbaru, tetapi tetap perlu restriction/rotasi. Pemindaian nilai dikenal bukan pemindaian seluruh jenis secret atau seluruh history.
 
-Akses Vercel menolak pembacaan target project dengan 403, termasuk team scope. Service account Firebase dapat membaca data untuk audit, tetapi tidak dapat melakukan inventaris Cloud Run (403). Hak deployment aktual belum tersedia. Tidak menjalankan deploy/rules terpisah yang dapat memutus aplikasi lama.
+Akses Vercel menolak pembacaan target project dengan 403, termasuk team scope. Service account Firebase dapat membaca data untuk audit. Diagnosis berikutnya menunjukkan Cloud Run API belum aktif (SERVICE_DISABLED), dan pemeriksaan IAM terpisah mengonfirmasi tidak adanya izin aktivasi/deployment yang diuji. Lihat [DEPLOYMENT_STATUS.md](DEPLOYMENT_STATUS.md). Hak deployment aktual belum tersedia. Tidak menjalankan deploy/rules terpisah yang dapat memutus aplikasi lama.
 
 Cloudinary upload/private delivery/delete nyata dan Gemini generation nyata belum diuji. Provider pada tes bersifat dummy. URL CDN lama tetap publik meskipun audience metadata berubah. Inventaris seluruh kartu/media belum diverifikasi; hanya dua contoh diperiksa. Migrasi produksi belum berjalan. Kamera fisik, Safari/Firefox, perangkat nyata, beban besar, aksesibilitas menyeluruh, ingress/IAM/budget/retensi dan login embedded AI Studio belum diverifikasi.
 
@@ -80,4 +81,4 @@ Audit log/backup terlindungi terhadap API klien, tetapi admin infrastruktur yang
 
 Fondasi kode Tahap 1 siap ditinjau dan diuji di staging; **belum siap dinyatakan selesai di produksi atau melanjutkan peluncuran Tahap 2**. Gate berikutnya: akses deployment proyek yang benar → konfigurasi/rotasi secret → tes provider staging → backup dan migrasi terkontrol → cutover backend/frontend/rules → tes otomatis HTTPS.
 
-Satu tindakan pemilik yang saat ini diperlukan adalah menyediakan akses deployment yang benar ke layanan AngkatanKU (AI Studio/Cloud Run atau hosting yang dipilih) melalui integrasi atau secret environment privat. Token Vercel yang ada belum mempunyai akses ke project target. Tidak perlu token Supabase, data sensitif tambahan, atau pengujian manual dari pemilik. Runbook teknis sudah disiapkan agar pelaksanaannya dapat dilanjutkan oleh agent setelah akses tersebut tersedia.
+Satu tindakan pemilik yang saat ini diperlukan adalah menyediakan identitas deployment baru yang berizin (bukan memperluas key lama yang terekspos) ke layanan AngkatanKU (AI Studio/Cloud Run atau hosting yang dipilih) melalui integrasi atau secret environment privat. Token Vercel yang ada belum mempunyai akses ke project target. Tidak perlu token Supabase, data sensitif tambahan, atau pengujian manual dari pemilik. Runbook teknis sudah disiapkan agar pelaksanaannya dapat dilanjutkan oleh agent setelah akses tersebut tersedia.

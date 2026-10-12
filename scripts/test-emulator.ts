@@ -1,6 +1,12 @@
 import { spawn } from "node:child_process";
 import { createWriteStream } from "node:fs";
 const jar = process.env.FIRESTORE_EMULATOR_JAR;
+const args = process.argv.slice(2);
+if (args.some((arg) => arg !== "--production"))
+  throw new Error("Unknown emulator test option");
+const testFile = args.includes("--production")
+  ? "tests/deployment/runtime.test.ts"
+  : "tests/emulator/firestore.test.ts";
 if (!jar)
   throw new Error(
     "FIRESTORE_EMULATOR_JAR required (official Firebase emulator, Java 21).",
@@ -35,7 +41,7 @@ try {
   if (!ready) throw new Error("Emulator not ready");
   const result = spawn(
     process.execPath,
-    ["--import", "tsx", "--test", "tests/emulator/firestore.test.ts"],
+    ["--import", "tsx", "--test", testFile],
     {
       stdio: "inherit",
       env: {
@@ -48,9 +54,10 @@ try {
       },
     },
   );
-  process.exitCode = await new Promise<number>((r) =>
-    result.once("exit", (code) => r(code || 0)),
-  );
+  process.exitCode = await new Promise<number>((resolve, reject) => {
+    result.once("error", reject);
+    result.once("exit", (code) => resolve(code ?? 1));
+  });
 } finally {
   child.kill("SIGTERM");
   log.end();

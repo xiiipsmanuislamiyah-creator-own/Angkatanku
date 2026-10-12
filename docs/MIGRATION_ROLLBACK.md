@@ -8,7 +8,7 @@ Target yang dibaca: project gen-lang-client-0067546861, database bernama ai-stud
 
 Diperlukan akses deployment layanan Node/HTTPS proyek dan IAM runtime terbatas untuk database target. ADC/workload identity diutamakan. Secret Cloudinary/Gemini dipasang di environment server/secret manager, bukan variabel VITE_ atau argumen command. Gunakan key baru yang telah diuji sebelum key terekspos dicabut; jangan mencabut satu-satunya jalur administrasi yang masih diperlukan tanpa pengganti.
 
-Vercel yang diberikan belum mengizinkan pembacaan project (403), termasuk setelah team scope ditambahkan. Cloud Run inventory juga ditolak (403). Bentuk runtime Node yang sekarang sesuai untuk backend dan proxy satu origin. Jangan menganggap endpoint upload 20 MB dapat dipasang sebagai Vercel Function biasa: dokumentasi Vercel menetapkan payload 4,5 MB. Evaluasi hosting aktual sebelum deploy, tanpa menambah database baru.
+Vercel yang diberikan belum mengizinkan pembacaan project (403), termasuk setelah team scope ditambahkan. Cloud Run inventory ditolak karena API belum aktif (SERVICE_DISABLED). Pemeriksaan IAM berikutnya berhasil dan mengonfirmasi bahwa identitas yang ada tidak memiliki izin aktivasi/deployment yang diuji; lihat DEPLOYMENT_STATUS.md. Bentuk runtime Node yang sekarang sesuai untuk backend dan proxy satu origin. Jangan menganggap endpoint upload 20 MB dapat dipasang sebagai Vercel Function biasa: dokumentasi Vercel menetapkan payload 4,5 MB. Evaluasi hosting aktual sebelum deploy, tanpa menambah database baru.
 
 ## Pemetaan yang sudah dilakukan tanpa penulisan
 

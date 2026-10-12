@@ -24,6 +24,7 @@
 ## Verifikasi dan operasional
 
 - Jalankan npm run lint, npm test, npm run build. Perubahan auth/policy/rules/migrasi memerlukan tes emulator; perubahan login/kartu/kontrol owner memerlukan Playwright yang relevan.
+- Untuk perubahan entrypoint/build/cookie produksi, npm run test:deployment menguji build asli melalui HTTPS lokal dan Firestore emulator; tambahkan OpenSSL pada dependensi lingkungan tes.
 - npm run test:rules memerlukan Java 21 dan FIRESTORE_EMULATOR_JAR; launcher hanya memakai demo-angkatanku. npm run test:e2e memakai akun dummy dan provider tiruan.
 - Jangan menjalankan eksploitasi atau tes tulis pada data produksi. Perbaiki kegagalan dan laporkan hasil nyata, bukan estimasi.
 - Migrasi default dry-run: target eksplisit, backup terenkripsi sebelum apply, rollback menolak perubahan bersamaan. Jangan bypass pemeriksaan konflik.
