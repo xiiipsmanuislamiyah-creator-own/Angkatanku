@@ -40,6 +40,8 @@ Source asli dipertahankan sebagai dasar; tidak membangun ulang UI. Penggantian a
 
 Login manual dan QR memakai verifikasi server yang sama. Password dihash scrypt; cookie HttpOnly/Secure/Strict, CSRF, rate limit transaksional, idle/absolute expiry, logout dan pencabutan sesi diterapkan. Role dari localStorage/request tidak dipercaya. Owner hanya ditetapkan oleh proses server terlindungi; admin tidak dapat menaikkan role sendiri atau mengambil alih owner.
 
+Review implementasi juga menemukan dan memperbaiki perubahan jenis profil target oleh admin guru, pengambilalihan ownership kosong saat moderasi, dan kemampuan penulis membatalkan hidden/comment lock. Tiga tes regresi membuktikan kegagalan sebelum perbaikan dan lulus setelahnya.
+
 Pusat kontrol ditambahkan pada panel existing untuk akun/permission/lingkup, suspend/ban, reset, konfigurasi, audience/hidden/delete, laporan dan audit. Tindakan berisiko memerlukan konfirmasi password dan dicatat. Siswa/guru tetap jenis profil, tanpa kewajiban email/OTP/nomor telepon. Tidak ada signup publik atau backdoor DM.
 
 Upload/delete dilindungi, media baru memakai authenticated delivery lewat server, dan AI mendapat batas input/kuota/konteks tanpa DM. Konfigurasi Global Chat/Story/Feed hanya disiapkan sesuai fondasi Tahap 1; fitur sosial penuh belum dibangun.
@@ -53,7 +55,7 @@ Backup terenkripsi dan rollback dengan pemeriksaan konflik telah diuji pada emul
 | Gate | Hasil |
 |---|---|
 | TypeScript | Lulus |
-| Unit/API/kompatibilitas/migrasi/media | 33/33 lulus |
+| Unit/API/kompatibilitas/migrasi/media | 36/36 lulus |
 | Firestore emulator | 3/3 lulus, termasuk 108 penolakan request langsung |
 | Build frontend/server | Lulus |
 | Browser Chromium | 10/10 lulus, 0 flaky/skipped |

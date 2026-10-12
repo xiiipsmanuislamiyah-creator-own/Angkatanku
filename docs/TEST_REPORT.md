@@ -7,14 +7,14 @@ Tanggal: 12 Oktober 2026. Hasil diulang pada source yang dipulihkan dan diperbai
 | Pemeriksaan | Hasil | Lingkungan/cakupan |
 |---|---|---|
 | npm run lint | Lulus, exit 0 | TypeScript noEmit |
-| npm test | 33/33 lulus | API Express nyata di localhost; MemoryStore transaksional; provider dummy |
+| npm test | 36/36 lulus | API Express nyata di localhost; MemoryStore transaksional; provider dummy |
 | npm run test:rules | 3/3 lulus | Emulator Firestore resmi 1.22.0, Java 21, project demo-angkatanku |
 | npm run build | Lulus, exit 0 | Vite 6.4.3 + esbuild, 2.188 modul |
 | npm run test:e2e | 10/10 lulus; 0 flaky/skipped | Chromium headless, Playwright 1.56.1, build aktual |
 | npm audit --json | 0 advisory | Critical/high/moderate/low/info semuanya 0 pada lockfile saat pemeriksaan |
-| Scan nilai rahasia dikenal | 0 kecocokan | 60 nilai dikenal terhadap 127 file source/dokumen/build saat scan; bukan seluruh sejarah Git |
+| Scan nilai rahasia dikenal | 0 kecocokan | 60 nilai dikenal terhadap 131 file source/dokumen/build saat scan; bukan seluruh sejarah Git |
 
-Run browser terakhir mulai 2026-10-12T03:25:23Z, durasi sekitar 94 detik. Detail mentah browser/screenshot disimpan lokal di test-results dan tidak dimasukkan ke Git. Rangkaian akhir dijalankan berurutan lint → unit/API → build → browser, dengan emulator pada port terpisah.
+Run browser terakhir mulai 2026-10-12T03:41:13.380Z, durasi sekitar 95 detik. Detail mentah browser/screenshot disimpan lokal di test-results dan tidak dimasukkan ke Git. Rangkaian akhir dijalankan berurutan lint → unit/API → build → browser, dengan emulator pada port terpisah.
 
 ## Cakupan API/unit
 
@@ -22,6 +22,7 @@ Run browser terakhir mulai 2026-10-12T03:25:23Z, durasi sekitar 94 detik. Detail
 - Brute force paralel: 12 percobaan pada satu username menghasilkan 5 penolakan kredensial dan 7 rate-limit; pemalsuan X-Forwarded-For tidak melewati kuota IP.
 - CSRF/Origin ditolak, session expired/idle/logout/revoke, perubahan password mencabut semua sesi, revoke sesi pengguna lain ditolak.
 - Member ke endpoint owner, admin menaikkan role sendiri, takeover profil owner, perubahan profil orang lain, perubahan identitas resmi dan permission di luar lingkup ditolak.
+- Jenis profil target tetap siswa ketika diedit admin guru; moderasi tidak mengambil alih kepemilikan konten legacy yang belum terpetakan; penulis tidak dapat membatalkan hidden/comment lock dari moderator.
 - Owner membuat akun member saja, password sementara membatasi penulisan, perubahan izin mencabut sesi, pagination audit/laporan tanpa record berulang.
 - Audience publik/anggota/restricted, legacy tanpa owner, private data projection, timestamp, nested secret removal, expiry Story dan agregat view.
 - Owner tidak dapat membaca DM orang lain; peserta dapat melaporkan snapshot pesan tertentu secara transparan.
@@ -37,6 +38,8 @@ Run browser terakhir mulai 2026-10-12T03:25:23Z, durasi sekitar 94 detik. Detail
 Tes pertama menjalankan **108 operasi langsung**: 3 konteks (tanpa login/member/klaim owner palsu) × 9 koleksi × get/list/set/delete. Seluruhnya ditolak Rules. Tes kedua menjalankan rate limit paralel dan revoke sesi melalui transaksi Firestore nyata. Tes ketiga menjalankan apply migrasi dan rollback terenkripsi dengan ID dokumen serta timestamp yang sama dengan nilai sebelum migrasi.
 
 Satu ekspektasi timestamp awal salah karena membandingkan presisi input dengan nilai yang sudah disimpan Firestore. Tes diperbaiki agar membandingkan nilai persisted sebelum/sesudah rollback, lalu ketiga tes diulang dan lulus. Kesalahan implementasi ownership yang sempat menyebabkan 500 juga diperbaiki dan kasusnya lulus ulang.
+
+Tiga kasus tambahan di atas mula-mula direproduksi dengan tes yang gagal pada implementasi, kemudian diperbaiki dan tes yang sama lulus. Seluruh suite unit/API dan emulator juga diulang sesudah perbaikan tersebut.
 
 ## Browser
 

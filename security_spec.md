@@ -55,7 +55,7 @@ Rate limit menggunakan transaksi Firestore. TRUSTED_PROXY_CIDRS hanya diisi ingr
 
 ## Data, privasi, media
 
-Collection/field dibatasi allowlist, tipe/batas input, kepemilikan, identitas resmi yang immutable, dan projection respons. Timestamp/identitas pengirim ditentukan server. Audience public/members/restricted; legacy tanpa audience menjadi members. Hidden hanya terlihat oleh pemilik/moderator. Identitas penonton menjadi agregat.
+Collection/field dibatasi allowlist, tipe/batas input, kepemilikan, identitas resmi yang immutable, dan projection respons. Timestamp/identitas pengirim ditentukan server. Audience public/members/restricted; legacy tanpa audience menjadi members. Hidden hanya terlihat oleh pemilik/moderator. Penulis tidak dapat membatalkan hidden/comment lock yang dipasang moderator. Edit moderator tidak mengambil alih konten legacy tanpa kepemilikan terpetakan, dan jenis profil target tidak diwarisi dari pelaku edit. Identitas penonton menjadi agregat.
 
 DM hanya diquery menurut sender/receiver, tanpa owner override. Laporan menyimpan snapshot pesan pilihan pelapor. Konteks AI terbatas pada jadwal/guru/prestasi yang terlihat, tanpa DM/kredensial atau alat perubahan akun.
 

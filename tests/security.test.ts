@@ -718,3 +718,82 @@ withFixture(
     }
   },
 );
+
+withFixture("teacher moderator preserves student profile kind", async (f) => {
+  const account = f.store.map.get("security_accounts/admin")!;
+  Object.assign(account, {
+    profileKind: "teacher",
+    scope: "school",
+    permissions: ["profiles.manage"],
+  });
+  const admin = await f.login("admin");
+  assert.equal(
+    (
+      await f.call(
+        "/data/write",
+        {
+          collection: "students",
+          id: "other",
+          operation: "update",
+          data: { motto: "Moderated safely" },
+        },
+        admin,
+      )
+    ).status,
+    200,
+  );
+  assert.equal((await f.store.get("students/other"))!.isTeacher, false);
+});
+withFixture("moderation does not claim unowned legacy content", async (f) => {
+  f.store.map.set("gallery/unowned", {
+    imageUrl: "https://example.invalid/legacy.png",
+    classRoom: "IPS 1",
+  });
+  const admin = await f.login("admin");
+  assert.equal(
+    (
+      await f.call(
+        "/data/write",
+        {
+          collection: "gallery",
+          id: "unowned",
+          operation: "update",
+          data: { hidden: true },
+        },
+        admin,
+      )
+    ).status,
+    200,
+  );
+  assert.equal((await f.store.get("gallery/unowned"))!.ownerId, null);
+});
+withFixture("content author cannot reverse moderation flags", async (f) => {
+  f.store.map.set("posts/moderated", {
+    ownerId: "member",
+    caption: "Dummy",
+    hidden: false,
+    commentLocked: false,
+    audience: "members",
+  });
+  const owner = await f.login("owner"),
+    member = await f.login();
+  const write = (session: any, data: any) =>
+    f.call(
+      "/data/write",
+      { collection: "posts", id: "moderated", operation: "update", data },
+      session,
+    );
+  assert.equal(
+    (await write(owner, { hidden: true, commentLocked: true })).status,
+    200,
+  );
+  assert.equal((await write(member, { hidden: false })).status, 403);
+  assert.equal((await write(member, { commentLocked: false })).status, 403);
+  assert.equal((await write(member, { caption: "Revised text" })).status, 200);
+  assert.equal((await f.store.get("posts/moderated"))!.hidden, true);
+  assert.equal((await f.store.get("posts/moderated"))!.commentLocked, true);
+  assert.equal(
+    (await write(owner, { hidden: false, commentLocked: false })).status,
+    200,
+  );
+});

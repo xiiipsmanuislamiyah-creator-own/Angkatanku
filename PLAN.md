@@ -13,7 +13,7 @@ Diperbarui 12 Oktober 2026. Implementasi dan verifikasi lokal selesai; cutover p
 - [x] Tutup akses Firestore langsung; amankan media/upload/delete dan AI.
 - [x] Migrasi mempertahankan UID/ID profil, backup AES-GCM, rollback dengan pemeriksaan konflik, GC media dengan tombstone.
 - [x] Pemetaan read-only 56 akun source; 18 akun Auth lain tidak diubah. Periksa dua contoh kartu CDN, bukan seluruh inventaris.
-- [x] TypeScript/build, 33 tes unit/API, 3 emulator, 10 browser, audit dependency dan pemeriksaan bundle.
+- [x] TypeScript/build, 36 tes unit/API, 3 emulator, 10 browser, audit dependency dan pemeriksaan bundle.
 - [x] Dokumentasi hasil, keterbatasan dan runbook cutover. Tidak ada operasi tulis produksi.
 
 ## Gate produksi belum selesai

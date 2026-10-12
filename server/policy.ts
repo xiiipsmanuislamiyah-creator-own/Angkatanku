@@ -324,7 +324,7 @@ export function validateChange(
   const allowed = new Set(fields(c).split(" "));
   const result: RecordData = {
     ...(old || {}),
-    ownerId: old ? resourceOwner(old) || p.uid : p.uid,
+    ownerId: old ? resourceOwner(old) : p.uid,
   };
   for (const [k, v] of Object.entries(d)) {
     if (k === "id") {
@@ -374,7 +374,11 @@ export function validateChange(
         "IDENTITY_IMMUTABLE",
       );
     if (["pinned", "hidden", "commentLocked", "isOfficial"].includes(k))
-      requireThat(moderator || v === false || v === old?.[k], 403, "FORBIDDEN");
+      requireThat(
+        moderator || v === old?.[k] || (v === false && old?.[k] !== true),
+        403,
+        "FORBIDDEN",
+      );
     if (["identityKey", "authorRole"].includes(k))
       requireThat(
         moderator || v === (k === "identityKey" ? "personal" : "member"),
@@ -460,7 +464,10 @@ export function validateChange(
     });
   }
   if (PROFILES.has(c))
-    result.isTeacher = !!old?.isTeacher || p.account.profileKind === "teacher";
+    result.isTeacher =
+      typeof old?.isTeacher === "boolean"
+        ? old.isTeacher
+        : c === "teachers" || (self && p.account.profileKind === "teacher");
   if (c !== "messages") {
     result.audience = result.audience || "members";
     requireThat(["public", "members", "restricted"].includes(result.audience));
