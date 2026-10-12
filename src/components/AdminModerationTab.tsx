@@ -190,21 +190,8 @@ export default function AdminModerationTab() {
   };
 
   // Block & Unblock handlers
-  const handleBlockUser = async (userId: string, label?: string) => {
-    if (!userId) return;
-    const cleanId = userId.trim();
-    await blockUserIdPersisted(cleanId);
-    setBlockedIds(getBlockedUserIds());
-    showNotification(`User ID "${cleanId}" ${label ? `(${label})` : ''} berhasil DIBLOKIR. Semua interaksinya disembunyikan.`);
-  };
-
-  const handleUnblockUser = async (userId: string) => {
-    if (!userId) return;
-    const cleanId = userId.trim();
-    await unblockUserIdPersisted(cleanId);
-    setBlockedIds(getBlockedUserIds());
-    showNotification(`User ID "${cleanId}" berhasil DIBUKA DARI BLOKIR.`);
-  };
+  const handleBlockUser=async(userId:string,_label?:string)=>{if(!userId)return;try{await blockUserIdPersisted(userId.trim());setBlockedIds(getBlockedUserIds());showNotification('Akses akun dicabut. Moderasi konten dilakukan terpisah.');}catch(e:any){showNotification(e.message||'Gunakan Pusat Kontrol Keamanan untuk konfirmasi tindakan.');}};
+  const handleUnblockUser=async(userId:string)=>{if(!userId)return;try{await unblockUserIdPersisted(userId.trim());setBlockedIds(getBlockedUserIds());showNotification('Akses akun diaktifkan kembali.');}catch(e:any){showNotification(e.message||'Tindakan belum berhasil.');}};
 
   const handleManualBlock = async (e: React.FormEvent) => {
     e.preventDefault();

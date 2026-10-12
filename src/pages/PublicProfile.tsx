@@ -50,7 +50,7 @@ export default function PublicProfile({ userId, onNavigate }: { userId: string, 
           imageUrl: imageUrl,
           title: albumTitle.trim() || 'Foto Album',
           date: new Date().toISOString().split('T')[0],
-          uploaderId: userId,
+          uploaderId: user.uid,
           album: 'Personal'
         });
       });

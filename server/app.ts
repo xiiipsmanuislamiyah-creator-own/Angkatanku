@@ -1,70 +1,1110 @@
-import express,{type Request,type Response,type NextFunction} from 'express';
-import multer from 'multer';
-import {Readable} from 'node:stream';
-import type {Store,RecordData} from './store';
-import {HttpError,requireThat,validId,randomToken,digest,normalizeUsername,hashPassword,passwordInput,verifyPassword,rateLimit,can,fresh,audit,PERMISSIONS,type Principal} from './security';
-import {principal,authenticated,csrfCheck,originCheck,login,userView,sessionCsrf,clearCookie,IDLE_SESSION_MS} from './auth';
-import {COLLECTIONS,CONTENT,visible,project,validateChange,moderationPermission,externalUrls} from './policy';
-import {assetIds,validateFile,type MediaProvider} from './media';
-export type Options={store:Store;origins:string[];media:MediaProvider;ai?:(message:string,history:any[],context:any)=>Promise<string>};
-const wrap=(fn:(req:Request,res:Response)=>any)=>(req:Request,res:Response,next:NextFunction)=>Promise.resolve(fn(req,res)).catch(next);
-export function createApp({store,origins,media,ai}:Options){
- const app=express();app.disable('x-powered-by');
- if(process.env.TRUSTED_PROXY_CIDRS)app.set('trust proxy',process.env.TRUSTED_PROXY_CIDRS.split(',').map(s=>s.trim()));
- app.use((req,res,next)=>{res.set({'X-Content-Type-Options':'nosniff','Referrer-Policy':'same-origin','Permissions-Policy':'camera=(self), microphone=(), geolocation=()','X-Robots-Tag':'noindex'});if(process.env.NODE_ENV==='production')res.set({'Strict-Transport-Security':'max-age=31536000','Content-Security-Policy':"default-src 'self'; base-uri 'none'; object-src 'none'; form-action 'self'; frame-ancestors 'self' https://aistudio.google.com; script-src 'self' https://maps.googleapis.com https://maps.gstatic.com; script-src-attr 'none'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' https: data: blob:; media-src 'self' https: blob:; connect-src 'self' https://maps.googleapis.com https://maps.gstatic.com https://*.googleapis.com; frame-src https://www.google.com https://maps.google.com; worker-src 'self' blob:"});next();});
- app.use('/api',express.json({limit:'256kb'}));
- app.use('/api',(req,res,next)=>{res.set('Cache-Control','no-store');try{if(!['GET','HEAD'].includes(req.method))originCheck(req,origins);}catch(e){next(e);return;}principal(store,req).then(p=>{res.locals.p=p;next();},next);});
- function writeUser(req:Request,res:Response){const p:Principal|null=res.locals.p;authenticated(p);csrfCheck(req,p);return p;}
- function owner(req:Request,res:Response){const p=writeUser(req,res);requireThat(p.account.role==='owner',403,'FORBIDDEN');fresh(p);return p;}
- async function mutation<T>(p:Principal,keys:string[],action:string,target:string,fn:(rows:(RecordData|null)[])=>{value:T;writes?:Record<string,RecordData|null>}){
-  const all=['security_accounts/'+p.uid,'security_sessions/'+p.sid,'security_config/main',...keys];
-  return store.atomic(all,([account,session,config,...rows])=>{requireThat(account?.status==='active'&&account.version===p.account.version&&session&&session.version===account.version&&!session.revoked&&session.expiresAt>Date.now()&&session.idleExpiresAt>Date.now(),401,'SESSION_REVOKED');requireThat(p.account.role==='owner'||(!config?.readOnly&&!config?.maintenance),403,'READ_ONLY','Sistem sedang dalam mode baca saja.');const r=fn(rows);return{value:r.value,writes:{...r.writes,['security_audit/'+randomToken()]:audit(p.uid,action,target)}};});
- }
- async function config(){return await store.get('security_config/main')||{};}
- function feature(c:string,cfg:RecordData){if(c==='posts')requireThat(cfg.feedEnabled!==false,403,'FEATURE_DISABLED');if(c==='stories')requireThat(cfg.storiesEnabled!==false,403,'FEATURE_DISABLED');}
- app.get('/api/health',(_req,res)=>res.json({ok:true}));
- app.post('/api/auth/login',wrap(async(req,res)=>{requireThat(req.body&&typeof req.body==='object');await login(store,req,res);}));
- app.get('/api/auth/session',wrap(async(req,res)=>{const p:Principal|null=res.locals.p;const profile=p?await store.get(p.account.profileCollection+'/'+p.account.profileId):null;res.json(p?{user:userView(p),csrfToken:sessionCsrf(req),profile:profile?project(p.account.profileCollection,p.account.profileId,profile,p):null}:{user:null,csrfToken:null,profile:null});}));
- app.post('/api/auth/renew',wrap(async(req,res)=>{const p=writeUser(req,res);await store.atomic(['security_accounts/'+p.uid,'security_sessions/'+p.sid],([a,s])=>{requireThat(a?.status==='active'&&s&&s.version===a.version&&!s.revoked&&s.expiresAt>Date.now()&&s.idleExpiresAt>Date.now(),401,'SESSION_REVOKED');return{value:null,writes:{['security_sessions/'+p.sid]:{...s,idleExpiresAt:Math.min(s.expiresAt,Date.now()+IDLE_SESSION_MS)}}};});res.json({ok:true});}));
- app.post('/api/auth/logout',wrap(async(req,res)=>{const p:Principal|null=res.locals.p;if(p){csrfCheck(req,p);await store.atomic(['security_sessions/'+p.sid],()=>({value:null,writes:{['security_sessions/'+p.sid]:null,['security_audit/'+randomToken()]:audit(p.uid,'session.logout',p.sid)}}));}clearCookie(res);res.json({ok:true});}));
- app.post('/api/auth/reauth',wrap(async(req,res)=>{const p=writeUser(req,res);await rateLimit(store,'reauth:'+p.uid,5,600000);requireThat(await verifyPassword(req.body.password,p.account.passwordHash),401,'INVALID_CREDENTIALS','Kata sandi tidak cocok.');await mutation(p,['security_sessions/'+p.sid],'session.reauth',p.sid,([s])=>({value:null,writes:{['security_sessions/'+p.sid]:{...s,reauthenticatedAt:Date.now()}}}));res.json({ok:true});}));
- app.get('/api/auth/sessions',wrap(async(req,res)=>{const p:Principal|null=res.locals.p;authenticated(p);const rows=await store.list('security_sessions',[['uid',p.uid]],undefined,100);res.json({items:rows.filter(r=>!r.data.revoked&&r.data.version===p.account.version&&r.data.expiresAt>Date.now()&&r.data.idleExpiresAt>Date.now()).map(r=>({id:r.id,current:r.id===p.sid,createdAt:r.data.createdAt,expiresAt:r.data.expiresAt}))});}));
- app.post('/api/auth/sessions/revoke',wrap(async(req,res)=>{const p=writeUser(req,res),id=req.body.id;requireThat(validId(id));await mutation(p,['security_sessions/'+id],'session.revoke',id,([s])=>{requireThat(s?.uid===p.uid,403,'FORBIDDEN');return{value:null,writes:{['security_sessions/'+id]:null}};});if(id===p.sid)clearCookie(res);res.json({ok:true});}));
- app.post('/api/auth/password',wrap(async(req,res)=>{const p=writeUser(req,res);fresh(p);const passwordHash=await hashPassword(passwordInput(req.body.password));await mutation(p,['security_accounts/'+p.uid],'account.password',p.uid,([a])=>({value:null,writes:{['security_accounts/'+p.uid]:{...a,passwordHash,mustChangePassword:false,version:a!.version+1}}}));clearCookie(res);res.json({ok:true});}));
- const accountView=(id:string,a:RecordData)=>({uid:id,username:a.username,displayName:a.displayName,role:a.role,status:a.status,permissions:a.permissions||[],scope:a.scope||'classes',classRooms:a.classRooms||[],profileKind:a.profileKind,mustChangePassword:!!a.mustChangePassword});
- app.get('/api/admin/accounts',wrap(async(req,res)=>{const p:Principal|null=res.locals.p;authenticated(p);requireThat(p.account.role==='owner',403,'FORBIDDEN');const after=typeof req.query.after==='string'?req.query.after:undefined;if(after)requireThat(validId(after));const rows=await store.list('security_accounts',[],after,100);res.json({items:rows.map(r=>accountView(r.id,r.data)),next:rows.length===100?rows.at(-1)!.id:null});}));
- app.post('/api/admin/accounts',wrap(async(req,res)=>{const p=owner(req,res),username=normalizeUsername(req.body.username),passwordHash=await hashPassword(passwordInput(req.body.password)),displayName=req.body.displayName,kind=req.body.profileKind||'student',classRoom=req.body.classRoom||'';requireThat(typeof displayName==='string'&&displayName.trim().length>0&&displayName.length<=120&&['student','teacher'].includes(kind)&&typeof classRoom==='string'&&classRoom.length<=40);const uid=randomToken(),c=kind==='teacher'?'teachers':'students',index='security_usernames/'+digest(username);await mutation(p,[index],'account.create',uid,([existing])=>{requireThat(!existing,409,'USERNAME_EXISTS');return{value:null,writes:{[index]:{uid},['security_accounts/'+uid]:{username,displayName,role:'member',status:'active',passwordHash,version:1,permissions:[],scope:'classes',classRooms:classRoom?[classRoom]:[],profileKind:kind,profileCollection:c,profileId:uid,mustChangePassword:true},[c+'/'+uid]:{ownerId:uid,username,name:displayName,nama:displayName,classRoom,isTeacher:kind==='teacher',securityRole:'member',audience:'members',createdAt:Date.now()}}};});res.json({uid});}));
- app.post('/api/admin/accounts/:id',wrap(async(req,res)=>{const p=owner(req,res),id=req.params.id,action=req.body.action;requireThat(validId(id));let passwordHash:string|undefined;if(action==='reset')passwordHash=await hashPassword(passwordInput(req.body.password));await mutation(p,['security_accounts/'+id],'account.'+action,id,([target])=>{requireThat(target&&target.role!=='owner'&&id!==p.uid,403,'OWNER_PROTECTED');let next:RecordData={...target,version:target.version+1};if(action==='permissions'){requireThat(['admin','member'].includes(req.body.role)&&Array.isArray(req.body.permissions)&&req.body.permissions.every((x:any)=>PERMISSIONS.includes(x))&&['school','classes'].includes(req.body.scope));requireThat(Array.isArray(req.body.classRooms)&&req.body.classRooms.length<=20&&req.body.classRooms.every((x:any)=>typeof x==='string'&&x.length<=40));Object.assign(next,{role:req.body.role,permissions:req.body.role==='admin'?[...new Set(req.body.permissions)]:[],scope:req.body.scope,classRooms:req.body.classRooms});}else if(action==='status'){requireThat(['active','suspended','banned'].includes(req.body.status));next.status=req.body.status;}else if(action==='reset'){Object.assign(next,{passwordHash,mustChangePassword:true});}else requireThat(action==='revoke');return{value:null,writes:{['security_accounts/'+id]:next}};});res.json({ok:true});}));
- app.get('/api/admin/audit',wrap(async(req,res)=>{const p:Principal|null=res.locals.p;requireThat(can(p,'audit.read'),403,'FORBIDDEN');const after=typeof req.query.after==='string'?req.query.after:undefined;if(after)requireThat(validId(after));const rows=await store.list('security_audit',[],after,100);res.json({items:rows.map(r=>({id:r.id,...r.data})),next:rows.length===100?rows.at(-1)!.id:null});}));
- app.get('/api/admin/config',wrap(async(req,res)=>{requireThat(can(res.locals.p,'config.manage'),403,'FORBIDDEN');res.json(project('config','main',await config(),res.locals.p));}));
- app.post('/api/admin/config',wrap(async(req,res)=>{const p=writeUser(req,res);fresh(p);requireThat(can(p,'config.manage'),403,'FORBIDDEN');const change:RecordData={};for(const [k,v]of Object.entries(req.body)){if(['maintenance','readOnly','aiEnabled','feedEnabled','storiesEnabled','globalChatEnabled','uploadLock'].includes(k)){requireThat(typeof v==='boolean');if(['maintenance','readOnly'].includes(k))requireThat(p.account.role==='owner',403,'FORBIDDEN');}else if(k==='blockedWords')requireThat(Array.isArray(v)&&v.length<=100&&v.every(x=>typeof x==='string'&&x.length>0&&x.length<=80));else if(k==='slowMode')requireThat(Number.isInteger(v)&&Number(v)>=0&&Number(v)<=3600);else throw new HttpError(400,'FIELD_DENIED','Pengaturan tidak dikenal.');change[k]=v;}await mutation(p,['security_config/main'],'config.update','main',([old])=>({value:null,writes:{'security_config/main':{...old,...change}}}));res.json({ok:true});}));
- app.post('/api/data/query',wrap(async(req,res)=>{const p:Principal|null=res.locals.p,c=req.body.collection,id=req.body.id,after=req.body.after;requireThat(COLLECTIONS.has(c)&&(!id||validId(id))&&(!after||validId(after)));await rateLimit(store,'read:'+(p?.uid||req.ip),240,60000);if(id){const data=await store.get(c+'/'+id);res.json({items:data&&visible(c,data,p)?[project(c,id,data,p)]:[],next:null});return;}let rows;if(c==='messages'){if(!p){res.json({items:[],next:null});return;}const groups=await Promise.all([[['senderId',p.uid]],[['receiverId',p.uid]],[['receiverId','all']]].map(filters=>store.list(c,filters as [string,any][],after,100)));rows=[...new Map(groups.flat().map(r=>[r.id,r])).values()].sort((a,b)=>a.id.localeCompare(b.id)).slice(0,100);}else if(c==='users'){rows=p?await store.list(c,[['ownerId',p.uid]],after,100):[];}else rows=await store.list(c,[],after,100);res.json({items:rows.filter(r=>visible(c,r.data,p)).map(r=>project(c,r.id,r.data,p)),next:rows.length===100?rows.at(-1)!.id:null});}));
- app.post('/api/data/write',wrap(async(req,res)=>{
-  const p=writeUser(req,res),{collection:c,id,operation,data}=req.body;requireThat(!p.account.mustChangePassword,403,'PASSWORD_CHANGE_REQUIRED','Ganti kata sandi sementara terlebih dahulu.');requireThat(COLLECTIONS.has(c)&&validId(id)&&['set','update','delete'].includes(operation));
-  const cfg=await config();feature(c,cfg);await rateLimit(store,'write:'+p.uid+':'+c,c==='stories'?10:c.includes('album')?3:c==='posts'?5:c==='messages'?10:60,c==='stories'||c==='posts'||c.includes('album')?3600000:60000);
-  const key=c+'/'+id,old=await store.get(key);if(operation==='update')requireThat(old,404,'NOT_FOUND');
-  if(['students','teachers'].includes(c)&&old?.ownerId){const target=await store.get('security_accounts/'+old.ownerId);requireThat(target?.role!=='owner'||p.account.role==='owner',403,'OWNER_PROTECTED');}
-  const next=validateChange(c,id,data||{},old,p,operation);
-  if(c==='messages'&&!old&&next?.type==='dm'){const recipient=await store.get('security_accounts/'+next.receiverId);requireThat(recipient?.status==='active',400,'RECIPIENT_UNAVAILABLE');}
-  if(next){const text=['caption','content','text','title','comment'].map(k=>next[k]||'').join(' ').toLowerCase();requireThat(!(cfg.blockedWords||[]).some((w:string)=>text.includes(w.toLowerCase())),400,'CONTENT_FILTERED','Konten ditolak oleh filter komunitas.');}
-  if(CONTENT.has(c)&&next){const newUrls=externalUrls(next).filter(u=>!externalUrls(old).includes(u));requireThat(!newUrls.length||(next.audience==='public'&&can(p,moderationPermission(c),next)),400,'PUBLIC_MEDIA_CONSENT','URL CDN hanya dapat diimpor moderator sebagai konten publik. Unggah file untuk media anggota.');}
-  const ids=[...new Set([...assetIds(old),...assetIds(next)])];requireThat(ids.length<=40);const oldIds=assetIds(old),newIds=assetIds(next);
-  await mutation(p,[key,...ids.map(x=>'security_media/'+x)],operation==='delete'?'content.delete':'content.write',key,([latest,...assets])=>{requireThat(JSON.stringify(latest)===JSON.stringify(old),409,'CONCURRENT_CHANGE');const writes:Record<string,RecordData|null>={[key]:next};for(let i=0;i<ids.length;i++){const a=assets[i];requireThat(a,400,'MEDIA_NOT_FOUND');if(newIds.includes(ids[i]))requireThat(!a.deleted&&!a.deleting&&(a.ownerId===p.uid||(a.parents||[]).includes(key)),403,'MEDIA_FORBIDDEN');const parents=new Set<string>(a.parents||[]);if(oldIds.includes(ids[i]))parents.delete(key);if(newIds.includes(ids[i]))parents.add(key);requireThat(parents.size<=20);writes['security_media/'+ids[i]]={...a,parents:[...parents]};}return{value:null,writes};});res.json({ok:true});
- }));
- app.post('/api/interactions',wrap(async(req,res)=>{
-  const p:Principal|null=res.locals.p,{collection:c,id,action}=req.body;requireThat(['posts','stories','students','teachers'].includes(c)&&validId(id)&&['like','comment','deleteComment','view'].includes(action));if(['students','teachers'].includes(c))requireThat(action==='view');
-  authenticated(p);csrfCheck(req,p);requireThat(!p.account.mustChangePassword||action==='view',403,'PASSWORD_CHANGE_REQUIRED');await rateLimit(store,'interaction:'+p.uid,action==='comment'?6:30,60000);
-  const key=c+'/'+id,rel='security_interactions/'+digest(key+':'+action+':'+p.uid);const cfg=await config();feature(c,cfg);
-  const result=await mutation(p,[key,rel],'content.'+action,key,([d,relation])=>{requireThat(d&&visible(c,d,p),404,'NOT_FOUND');const next={...d},writes:Record<string,RecordData>={};let out:any={ok:true};if(action==='view'||action==='like'){const field=action==='view'?'viewCount':'likes_count';if(!relation){next[field]=(Number(next[field])||0)+1;writes[rel]={uid:p.uid,createdAt:Date.now()};}out[field]=Number(next[field])||0;}else if(action==='comment'){requireThat(c==='posts'&&!d.commentLocked&&typeof req.body.content==='string'&&req.body.content.trim().length>0&&req.body.content.length<=2000);requireThat(!(cfg.blockedWords||[]).some((w:string)=>req.body.content.toLowerCase().includes(w.toLowerCase())),400,'CONTENT_FILTERED');const comments=d.comments||[];requireThat(comments.length<100,409,'COMMENT_LIMIT');const comment={id:randomToken(),post_id:id,author:p.account.displayName||p.account.username,user_id:p.uid,content:req.body.content.trim(),created_at:new Date().toISOString()};next.comments=[...comments,comment];out={comment};}else{const comment=(d.comments||[]).find((x:any)=>x.id===req.body.commentId);requireThat(comment&&(comment.user_id===p.uid||can(p,'feed.moderate',d)),403,'FORBIDDEN');next.comments=d.comments.filter((x:any)=>x.id!==req.body.commentId);}writes[key]=next;return{value:out,writes};});res.json(result);
- }));
- app.post('/api/reports',wrap(async(req,res)=>{const p=writeUser(req,res),{collection:c,id,reason}=req.body;requireThat(['posts','stories','messages'].includes(c)&&validId(id)&&typeof reason==='string'&&reason.length>=3&&reason.length<=1000);await rateLimit(store,'report:'+p.uid,5,3600000);const d=await store.get(c+'/'+id);requireThat(d&&visible(c,d,p),404,'NOT_FOUND');const rid=randomToken();await mutation(p,[],'report.create',rid,()=>({value:null,writes:{['security_reports/'+rid]:{reporterId:p.uid,collection:c,documentId:id,reason,selectedContent:project(c,id,d,p),classRoom:p.account.classRooms?.[0]||'',status:'open',createdAt:Date.now()}}}));res.json({id:rid});}));
- app.get('/api/admin/reports',wrap(async(req,res)=>{const p:Principal|null=res.locals.p;authenticated(p);requireThat(p.account.role==='owner'||p.account.permissions?.includes('reports.review'),403,'FORBIDDEN');const rows=await store.list('security_reports');res.json({items:rows.filter(r=>can(p,'reports.review',r.data)).map(r=>({id:r.id,...r.data}))});}));
- let uploads=0;const upload=multer({storage:multer.memoryStorage(),limits:{fileSize:20*1024*1024,files:1,fields:0,parts:1}}).single('file');
- app.post('/api/media',(req,res,next)=>{(async()=>{const p=writeUser(req,res);requireThat(!p.account.mustChangePassword,403,'PASSWORD_CHANGE_REQUIRED');const cfg=await config();requireThat(!cfg.uploadLock&&(p.account.role==='owner'||(!cfg.readOnly&&!cfg.maintenance)),403,'UPLOAD_LOCKED');await rateLimit(store,'upload:'+p.uid,20,3600000);requireThat(uploads<4,429,'UPLOAD_BUSY');uploads++;let finished=false;const release=()=>{if(!finished){finished=true;uploads--;}};res.once('finish',release);res.once('close',release);upload(req,res,next);})().catch(next);},wrap(async(req,res)=>{const p=writeUser(req,res);requireThat(req.file);const mime=await validateFile(req.file.buffer,req.file.mimetype);const uploaded=await media.upload(req.file.buffer,mime),id=randomToken();try{await mutation(p,[],'media.upload',id,()=>({value:null,writes:{['security_media/'+id]:{...uploaded,ownerId:p.uid,parents:[],createdAt:Date.now(),deleted:false}}}));}catch(e){await media.destroy(uploaded).catch(()=>{});throw e;}res.json({url:'/api/media/'+id,id});}));
- app.get('/api/media/:id',wrap(async(req,res)=>{const id=req.params.id;requireThat(validId(id));const a=await store.get('security_media/'+id),p:Principal|null=res.locals.p;requireThat(a&&!a.deleted&&!a.deleting,404,'NOT_FOUND');let allowed=!!p&&a.ownerId===p.uid;if(!allowed)for(const parent of a.parents||[]){const [c,pid]=parent.split('/');if(!COLLECTIONS.has(c))continue;const d=await store.get(parent);if(d&&visible(c,d,p)&&assetIds(d).includes(id)){allowed=true;break;}}requireThat(allowed,404,'NOT_FOUND');const upstream=await media.download(a);res.set({'Content-Type':a.mime,'Content-Disposition':'inline','Cache-Control':'private, no-store'});requireThat(upstream.body,502,'MEDIA_UNAVAILABLE');const stream=Readable.fromWeb(upstream.body as any);req.on('close',()=>stream.destroy());stream.on('error',()=>res.destroy());stream.pipe(res);}));
- app.post('/api/cloudinary-delete',wrap(async(req,res)=>{const p=writeUser(req,res),id=req.body.id;requireThat(validId(id),409,'LEGACY_MEDIA_REVIEW','Media lama memerlukan migrasi terverifikasi.');await mutation(p,['security_media/'+id],'media.requestDelete',id,([a])=>{requireThat(a&&a.ownerId===p.uid,403,'FORBIDDEN');return{value:null,writes:{['security_media/'+id]:{...a,pendingDelete:true}}};});res.json({ok:true});}));
- app.post('/api/nusa-ai',wrap(async(req,res)=>{const p=writeUser(req,res),cfg=await config();requireThat(!p.account.mustChangePassword,403,'PASSWORD_CHANGE_REQUIRED');requireThat(cfg.aiEnabled!==false&&!cfg.maintenance,403,'AI_DISABLED');requireThat(ai,503,'AI_UNAVAILABLE','Nusa AI belum tersedia.');const {message,history=[]}=req.body;requireThat(typeof message==='string'&&message.trim().length>0&&message.length<=2000&&Array.isArray(history)&&history.length<=10&&history.every(x=>x&&['user','ai'].includes(x.sender)&&typeof x.text==='string'&&x.text.length<=2000));await rateLimit(store,'ai:'+p.uid,10,600000);await rateLimit(store,'ai:global',500,86400000);const lease='security_ai_leases/'+p.uid;await mutation(p,[lease],'ai.request','nusa',([a])=>{requireThat(!a||a.until<Date.now(),429,'AI_BUSY');return{value:null,writes:{[lease]:{until:Date.now()+40000}}};});try{const context:any={};for(const c of ['schedules','teachers','achievements'])context[c]=(await store.list(c,[],undefined,50)).filter(r=>visible(c,r.data,p)).slice(0,15).map(r=>project(c,r.id,r.data,p));res.json({text:await ai(message,history,context)});}finally{await store.atomic([lease],()=>({value:null,writes:{[lease]:null}}));}}));
- app.use('/api',(_req,res)=>res.status(404).json({code:'NOT_FOUND',error:'Endpoint tidak ditemukan.'}));
- app.use((error:any,_req:Request,res:Response,_next:NextFunction)=>{const status=error instanceof HttpError?error.status:error?.type==='entity.too.large'||error?.code==='LIMIT_FILE_SIZE'?413:error instanceof multer.MulterError||error instanceof SyntaxError?400:500;if(status===429)res.set('Retry-After','60');if(!res.headersSent)res.status(status).json({code:error instanceof HttpError?error.code:'REQUEST_FAILED',error:error instanceof HttpError?error.message:'Permintaan gagal diproses.'});});
- return app;
+import express, {
+  type Request,
+  type Response,
+  type NextFunction,
+} from "express";
+import multer from "multer";
+import { Readable } from "node:stream";
+import type { Store, RecordData } from "./store";
+import {
+  HttpError,
+  requireThat,
+  validId,
+  randomToken,
+  digest,
+  normalizeUsername,
+  hashPassword,
+  passwordInput,
+  verifyPassword,
+  rateLimit,
+  can,
+  fresh,
+  audit,
+  PERMISSIONS,
+  type Principal,
+} from "./security";
+import {
+  principal,
+  authenticated,
+  csrfCheck,
+  originCheck,
+  login,
+  userView,
+  sessionCsrf,
+  clearCookie,
+  IDLE_SESSION_MS,
+} from "./auth";
+import {
+  COLLECTIONS,
+  CONTENT,
+  visible,
+  project,
+  validateChange,
+  moderationPermission,
+  externalUrls,
+} from "./policy";
+import { assetIds, validateFile, type MediaProvider } from "./media";
+export type Options = {
+  store: Store;
+  origins: string[];
+  media: MediaProvider;
+  ai?: (message: string, history: any[], context: any) => Promise<string>;
+};
+const wrap =
+  (fn: (req: Request, res: Response) => any) =>
+  (req: Request, res: Response, next: NextFunction) =>
+    Promise.resolve(fn(req, res)).catch(next);
+export function createApp({ store, origins, media, ai }: Options) {
+  const app = express();
+  app.disable("x-powered-by");
+  if (process.env.TRUSTED_PROXY_CIDRS)
+    app.set(
+      "trust proxy",
+      process.env.TRUSTED_PROXY_CIDRS.split(",").map((s) => s.trim()),
+    );
+  app.use((req, res, next) => {
+    res.set({
+      "X-Content-Type-Options": "nosniff",
+      "Referrer-Policy": "same-origin",
+      "Permissions-Policy": "camera=(self), microphone=(), geolocation=()",
+      "X-Robots-Tag": "noindex",
+    });
+    if (process.env.NODE_ENV === "production")
+      res.set({
+        "Strict-Transport-Security": "max-age=31536000",
+        "Content-Security-Policy":
+          "default-src 'self'; base-uri 'none'; object-src 'none'; form-action 'self'; frame-ancestors 'self' https://aistudio.google.com; script-src 'self' https://maps.googleapis.com https://maps.gstatic.com; script-src-attr 'none'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' https: data: blob:; media-src 'self' https: blob:; connect-src 'self' https://maps.googleapis.com https://maps.gstatic.com https://*.googleapis.com; frame-src https://www.google.com https://maps.google.com; worker-src 'self' blob:",
+      });
+    next();
+  });
+  app.use("/api", express.json({ limit: "256kb" }));
+  app.use("/api", (req, res, next) => {
+    res.set("Cache-Control", "no-store");
+    try {
+      if (!["GET", "HEAD"].includes(req.method)) originCheck(req, origins);
+    } catch (e) {
+      next(e);
+      return;
+    }
+    principal(store, req).then((p) => {
+      res.locals.p = p;
+      next();
+    }, next);
+  });
+  function writeUser(req: Request, res: Response) {
+    const p: Principal | null = res.locals.p;
+    authenticated(p);
+    csrfCheck(req, p);
+    return p;
+  }
+  function owner(req: Request, res: Response) {
+    const p = writeUser(req, res);
+    requireThat(p.account.role === "owner", 403, "FORBIDDEN");
+    fresh(p);
+    return p;
+  }
+  async function mutation<T>(
+    p: Principal,
+    keys: string[],
+    action: string,
+    target: string,
+    fn: (rows: (RecordData | null)[]) => {
+      value: T;
+      writes?: Record<string, RecordData | null>;
+    },
+  ) {
+    const all = [
+      "security_accounts/" + p.uid,
+      "security_sessions/" + p.sid,
+      "security_config/main",
+      ...keys,
+    ];
+    return store.atomic(all, ([account, session, config, ...rows]) => {
+      requireThat(
+        account?.status === "active" &&
+          account.version === p.account.version &&
+          session &&
+          session.version === account.version &&
+          !session.revoked &&
+          session.expiresAt > Date.now() &&
+          session.idleExpiresAt > Date.now(),
+        401,
+        "SESSION_REVOKED",
+      );
+      requireThat(
+        p.account.role === "owner" ||
+          (!config?.readOnly && !config?.maintenance),
+        403,
+        "READ_ONLY",
+        "Sistem sedang dalam mode baca saja.",
+      );
+      const r = fn(rows);
+      return {
+        value: r.value,
+        writes: {
+          ...r.writes,
+          ["security_audit/" + randomToken()]: audit(p.uid, action, target),
+        },
+      };
+    });
+  }
+  async function config() {
+    return (await store.get("security_config/main")) || {};
+  }
+  function feature(c: string, cfg: RecordData) {
+    if (c === "posts")
+      requireThat(cfg.feedEnabled !== false, 403, "FEATURE_DISABLED");
+    if (c === "stories")
+      requireThat(cfg.storiesEnabled !== false, 403, "FEATURE_DISABLED");
+  }
+  app.get("/api/health", (_req, res) => res.json({ ok: true }));
+  app.post(
+    "/api/auth/login",
+    wrap(async (req, res) => {
+      requireThat(req.body && typeof req.body === "object");
+      await login(store, req, res);
+    }),
+  );
+  app.get(
+    "/api/auth/session",
+    wrap(async (req, res) => {
+      const p: Principal | null = res.locals.p;
+      const profile = p
+        ? await store.get(
+            p.account.profileCollection + "/" + p.account.profileId,
+          )
+        : null;
+      res.json(
+        p
+          ? {
+              user: userView(p),
+              csrfToken: sessionCsrf(req),
+              profile: profile
+                ? project(
+                    p.account.profileCollection,
+                    p.account.profileId,
+                    profile,
+                    p,
+                  )
+                : null,
+            }
+          : { user: null, csrfToken: null, profile: null },
+      );
+    }),
+  );
+  app.post(
+    "/api/auth/renew",
+    wrap(async (req, res) => {
+      const p = writeUser(req, res);
+      await store.atomic(
+        ["security_accounts/" + p.uid, "security_sessions/" + p.sid],
+        ([a, s]) => {
+          requireThat(
+            a?.status === "active" &&
+              s &&
+              s.version === a.version &&
+              !s.revoked &&
+              s.expiresAt > Date.now() &&
+              s.idleExpiresAt > Date.now(),
+            401,
+            "SESSION_REVOKED",
+          );
+          return {
+            value: null,
+            writes: {
+              ["security_sessions/" + p.sid]: {
+                ...s,
+                idleExpiresAt: Math.min(
+                  s.expiresAt,
+                  Date.now() + IDLE_SESSION_MS,
+                ),
+              },
+            },
+          };
+        },
+      );
+      res.json({ ok: true });
+    }),
+  );
+  app.post(
+    "/api/auth/logout",
+    wrap(async (req, res) => {
+      const p: Principal | null = res.locals.p;
+      if (p) {
+        csrfCheck(req, p);
+        await store.atomic(["security_sessions/" + p.sid], () => ({
+          value: null,
+          writes: {
+            ["security_sessions/" + p.sid]: null,
+            ["security_audit/" + randomToken()]: audit(
+              p.uid,
+              "session.logout",
+              p.sid,
+            ),
+          },
+        }));
+      }
+      clearCookie(res);
+      res.json({ ok: true });
+    }),
+  );
+  app.post(
+    "/api/auth/reauth",
+    wrap(async (req, res) => {
+      const p = writeUser(req, res);
+      await rateLimit(store, "reauth:" + p.uid, 5, 600000);
+      requireThat(
+        await verifyPassword(req.body.password, p.account.passwordHash),
+        401,
+        "INVALID_CREDENTIALS",
+        "Kata sandi tidak cocok.",
+      );
+      await mutation(
+        p,
+        ["security_sessions/" + p.sid],
+        "session.reauth",
+        p.sid,
+        ([s]) => ({
+          value: null,
+          writes: {
+            ["security_sessions/" + p.sid]: {
+              ...s,
+              reauthenticatedAt: Date.now(),
+            },
+          },
+        }),
+      );
+      res.json({ ok: true });
+    }),
+  );
+  app.get(
+    "/api/auth/sessions",
+    wrap(async (req, res) => {
+      const p: Principal | null = res.locals.p;
+      authenticated(p);
+      const rows = await store.list(
+        "security_sessions",
+        [["uid", p.uid]],
+        undefined,
+        100,
+      );
+      res.json({
+        items: rows
+          .filter(
+            (r) =>
+              !r.data.revoked &&
+              r.data.version === p.account.version &&
+              r.data.expiresAt > Date.now() &&
+              r.data.idleExpiresAt > Date.now(),
+          )
+          .map((r) => ({
+            id: r.id,
+            current: r.id === p.sid,
+            createdAt: r.data.createdAt,
+            expiresAt: r.data.expiresAt,
+          })),
+      });
+    }),
+  );
+  app.post(
+    "/api/auth/sessions/revoke",
+    wrap(async (req, res) => {
+      const p = writeUser(req, res),
+        id = req.body.id;
+      requireThat(validId(id));
+      await mutation(
+        p,
+        ["security_sessions/" + id],
+        "session.revoke",
+        id,
+        ([s]) => {
+          requireThat(s?.uid === p.uid, 403, "FORBIDDEN");
+          return { value: null, writes: { ["security_sessions/" + id]: null } };
+        },
+      );
+      if (id === p.sid) clearCookie(res);
+      res.json({ ok: true });
+    }),
+  );
+  app.post(
+    "/api/auth/password",
+    wrap(async (req, res) => {
+      const p = writeUser(req, res);
+      fresh(p);
+      const passwordHash = await hashPassword(passwordInput(req.body.password));
+      await mutation(
+        p,
+        ["security_accounts/" + p.uid],
+        "account.password",
+        p.uid,
+        ([a]) => ({
+          value: null,
+          writes: {
+            ["security_accounts/" + p.uid]: {
+              ...a,
+              passwordHash,
+              mustChangePassword: false,
+              version: a!.version + 1,
+            },
+          },
+        }),
+      );
+      clearCookie(res);
+      res.json({ ok: true });
+    }),
+  );
+  const accountView = (id: string, a: RecordData) => ({
+    uid: id,
+    username: a.username,
+    displayName: a.displayName,
+    role: a.role,
+    status: a.status,
+    permissions: a.permissions || [],
+    scope: a.scope || "classes",
+    classRooms: a.classRooms || [],
+    profileKind: a.profileKind,
+    mustChangePassword: !!a.mustChangePassword,
+  });
+  app.get(
+    "/api/admin/accounts",
+    wrap(async (req, res) => {
+      const p: Principal | null = res.locals.p;
+      authenticated(p);
+      requireThat(p.account.role === "owner", 403, "FORBIDDEN");
+      const after =
+        typeof req.query.after === "string" ? req.query.after : undefined;
+      if (after) requireThat(validId(after));
+      const rows = await store.list("security_accounts", [], after, 100);
+      res.json({
+        items: rows.map((r) => accountView(r.id, r.data)),
+        next: rows.length === 100 ? rows.at(-1)!.id : null,
+      });
+    }),
+  );
+  app.post(
+    "/api/admin/accounts",
+    wrap(async (req, res) => {
+      const p = owner(req, res),
+        username = normalizeUsername(req.body.username),
+        passwordHash = await hashPassword(passwordInput(req.body.password)),
+        displayName = req.body.displayName,
+        kind = req.body.profileKind || "student",
+        classRoom = req.body.classRoom || "";
+      requireThat(
+        typeof displayName === "string" &&
+          displayName.trim().length > 0 &&
+          displayName.length <= 120 &&
+          ["student", "teacher"].includes(kind) &&
+          typeof classRoom === "string" &&
+          classRoom.length <= 40,
+      );
+      const uid = randomToken(),
+        c = kind === "teacher" ? "teachers" : "students",
+        index = "security_usernames/" + digest(username);
+      await mutation(p, [index], "account.create", uid, ([existing]) => {
+        requireThat(!existing, 409, "USERNAME_EXISTS");
+        return {
+          value: null,
+          writes: {
+            [index]: { uid },
+            ["security_accounts/" + uid]: {
+              username,
+              displayName,
+              role: "member",
+              status: "active",
+              passwordHash,
+              version: 1,
+              permissions: [],
+              scope: "classes",
+              classRooms: classRoom ? [classRoom] : [],
+              profileKind: kind,
+              profileCollection: c,
+              profileId: uid,
+              mustChangePassword: true,
+            },
+            [c + "/" + uid]: {
+              ownerId: uid,
+              username,
+              name: displayName,
+              nama: displayName,
+              classRoom,
+              isTeacher: kind === "teacher",
+              securityRole: "member",
+              audience: "members",
+              createdAt: Date.now(),
+            },
+          },
+        };
+      });
+      res.json({ uid });
+    }),
+  );
+  app.post(
+    "/api/admin/accounts/:id",
+    wrap(async (req, res) => {
+      const p = owner(req, res),
+        id = req.params.id,
+        action = req.body.action;
+      requireThat(validId(id));
+      let passwordHash: string | undefined;
+      if (action === "reset")
+        passwordHash = await hashPassword(passwordInput(req.body.password));
+      await mutation(
+        p,
+        ["security_accounts/" + id],
+        "account." + action,
+        id,
+        ([target]) => {
+          requireThat(
+            target && target.role !== "owner" && id !== p.uid,
+            403,
+            "OWNER_PROTECTED",
+          );
+          let next: RecordData = { ...target, version: target.version + 1 };
+          if (action === "permissions") {
+            requireThat(
+              ["admin", "member"].includes(req.body.role) &&
+                Array.isArray(req.body.permissions) &&
+                req.body.permissions.every((x: any) =>
+                  PERMISSIONS.includes(x),
+                ) &&
+                ["school", "classes"].includes(req.body.scope),
+            );
+            requireThat(
+              Array.isArray(req.body.classRooms) &&
+                req.body.classRooms.length <= 20 &&
+                req.body.classRooms.every(
+                  (x: any) => typeof x === "string" && x.length <= 40,
+                ),
+            );
+            Object.assign(next, {
+              role: req.body.role,
+              permissions:
+                req.body.role === "admin"
+                  ? [...new Set(req.body.permissions)]
+                  : [],
+              scope: req.body.scope,
+              classRooms: req.body.classRooms,
+            });
+          } else if (action === "status") {
+            requireThat(
+              ["active", "suspended", "banned"].includes(req.body.status),
+            );
+            next.status = req.body.status;
+          } else if (action === "reset") {
+            Object.assign(next, { passwordHash, mustChangePassword: true });
+          } else requireThat(action === "revoke");
+          return { value: null, writes: { ["security_accounts/" + id]: next } };
+        },
+      );
+      res.json({ ok: true });
+    }),
+  );
+  app.get(
+    "/api/admin/audit",
+    wrap(async (req, res) => {
+      const p: Principal | null = res.locals.p;
+      requireThat(can(p, "audit.read"), 403, "FORBIDDEN");
+      const after =
+        typeof req.query.after === "string" ? req.query.after : undefined;
+      if (after) requireThat(validId(after));
+      const rows = await store.list("security_audit", [], after, 100);
+      res.json({
+        items: rows.map((r) => ({ id: r.id, ...r.data })),
+        next: rows.length === 100 ? rows.at(-1)!.id : null,
+      });
+    }),
+  );
+  app.get(
+    "/api/admin/config",
+    wrap(async (req, res) => {
+      requireThat(can(res.locals.p, "config.manage"), 403, "FORBIDDEN");
+      res.json(project("config", "main", await config(), res.locals.p));
+    }),
+  );
+  app.post(
+    "/api/admin/config",
+    wrap(async (req, res) => {
+      const p = writeUser(req, res);
+      fresh(p);
+      requireThat(can(p, "config.manage"), 403, "FORBIDDEN");
+      const change: RecordData = {};
+      for (const [k, v] of Object.entries(req.body)) {
+        if (
+          [
+            "maintenance",
+            "readOnly",
+            "aiEnabled",
+            "feedEnabled",
+            "storiesEnabled",
+            "globalChatEnabled",
+            "uploadLock",
+          ].includes(k)
+        ) {
+          requireThat(typeof v === "boolean");
+          if (["maintenance", "readOnly"].includes(k))
+            requireThat(p.account.role === "owner", 403, "FORBIDDEN");
+        } else if (k === "blockedWords")
+          requireThat(
+            Array.isArray(v) &&
+              v.length <= 100 &&
+              v.every(
+                (x) => typeof x === "string" && x.length > 0 && x.length <= 80,
+              ),
+          );
+        else if (k === "slowMode")
+          requireThat(
+            Number.isInteger(v) && Number(v) >= 0 && Number(v) <= 3600,
+          );
+        else
+          throw new HttpError(400, "FIELD_DENIED", "Pengaturan tidak dikenal.");
+        change[k] = v;
+      }
+      await mutation(
+        p,
+        ["security_config/main"],
+        "config.update",
+        "main",
+        ([old]) => ({
+          value: null,
+          writes: { "security_config/main": { ...old, ...change } },
+        }),
+      );
+      res.json({ ok: true });
+    }),
+  );
+  app.post(
+    "/api/data/query",
+    wrap(async (req, res) => {
+      const p: Principal | null = res.locals.p,
+        c = req.body.collection,
+        id = req.body.id,
+        after = req.body.after;
+      requireThat(
+        COLLECTIONS.has(c) &&
+          (!id || validId(id)) &&
+          (!after || validId(after)),
+      );
+      await rateLimit(store, "read:" + (p?.uid || req.ip), 240, 60000);
+      if (id) {
+        const data = await store.get(c + "/" + id);
+        res.json({
+          items: data && visible(c, data, p) ? [project(c, id, data, p)] : [],
+          next: null,
+        });
+        return;
+      }
+      let rows;
+      if (c === "messages") {
+        if (!p) {
+          res.json({ items: [], next: null });
+          return;
+        }
+        const groups = await Promise.all(
+          [
+            [["senderId", p.uid]],
+            [["receiverId", p.uid]],
+            [["receiverId", "all"]],
+          ].map((filters) =>
+            store.list(c, filters as [string, any][], after, 100),
+          ),
+        );
+        rows = [...new Map(groups.flat().map((r) => [r.id, r])).values()]
+          .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
+          .slice(0, 100);
+      } else if (c === "users") {
+        rows = p ? await store.list(c, [["ownerId", p.uid]], after, 100) : [];
+      } else rows = await store.list(c, [], after, 100);
+      res.json({
+        items: rows
+          .filter((r) => visible(c, r.data, p))
+          .map((r) => project(c, r.id, r.data, p)),
+        next: rows.length === 100 ? rows.at(-1)!.id : null,
+      });
+    }),
+  );
+  app.post(
+    "/api/data/write",
+    wrap(async (req, res) => {
+      const p = writeUser(req, res),
+        { collection: c, id, operation, data } = req.body;
+      requireThat(
+        !p.account.mustChangePassword,
+        403,
+        "PASSWORD_CHANGE_REQUIRED",
+        "Ganti kata sandi sementara terlebih dahulu.",
+      );
+      requireThat(
+        COLLECTIONS.has(c) &&
+          validId(id) &&
+          ["set", "update", "delete"].includes(operation),
+      );
+      const cfg = await config();
+      feature(c, cfg);
+      await rateLimit(
+        store,
+        "write:" + p.uid + ":" + c,
+        c === "stories"
+          ? 10
+          : c.includes("album")
+            ? 3
+            : c === "posts"
+              ? 5
+              : c === "messages"
+                ? 10
+                : 60,
+        c === "stories" || c === "posts" || c.includes("album")
+          ? 3600000
+          : 60000,
+      );
+      const key = c + "/" + id,
+        old = await store.get(key);
+      if (operation === "update") requireThat(old, 404, "NOT_FOUND");
+      if (["students", "teachers"].includes(c) && old?.ownerId) {
+        const target = await store.get("security_accounts/" + old.ownerId);
+        requireThat(
+          target?.role !== "owner" || p.account.role === "owner",
+          403,
+          "OWNER_PROTECTED",
+        );
+      }
+      const next = validateChange(c, id, data || {}, old, p, operation);
+      if (c === "messages" && !old && next?.type === "dm") {
+        const recipient = await store.get(
+          "security_accounts/" + next.receiverId,
+        );
+        requireThat(
+          recipient?.status === "active",
+          400,
+          "RECIPIENT_UNAVAILABLE",
+        );
+      }
+      if (next) {
+        const text = ["caption", "content", "text", "title", "comment"]
+          .map((k) => next[k] || "")
+          .join(" ")
+          .toLowerCase();
+        requireThat(
+          !(cfg.blockedWords || []).some((w: string) =>
+            text.includes(w.toLowerCase()),
+          ),
+          400,
+          "CONTENT_FILTERED",
+          "Konten ditolak oleh filter komunitas.",
+        );
+      }
+      if (CONTENT.has(c) && next) {
+        const newUrls = externalUrls(next).filter(
+          (u) => !externalUrls(old).includes(u),
+        );
+        requireThat(
+          !newUrls.length ||
+            (next.audience === "public" &&
+              can(p, moderationPermission(c), next)),
+          400,
+          "PUBLIC_MEDIA_CONSENT",
+          "URL CDN hanya dapat diimpor moderator sebagai konten publik. Unggah file untuk media anggota.",
+        );
+      }
+      const ids = [...new Set([...assetIds(old), ...assetIds(next)])];
+      requireThat(ids.length <= 40);
+      const oldIds = assetIds(old),
+        newIds = assetIds(next);
+      await mutation(
+        p,
+        [key, ...ids.map((x) => "security_media/" + x)],
+        operation === "delete" ? "content.delete" : "content.write",
+        key,
+        ([latest, ...assets]) => {
+          requireThat(
+            JSON.stringify(latest) === JSON.stringify(old),
+            409,
+            "CONCURRENT_CHANGE",
+          );
+          const writes: Record<string, RecordData | null> = { [key]: next };
+          for (let i = 0; i < ids.length; i++) {
+            const a = assets[i];
+            requireThat(a, 400, "MEDIA_NOT_FOUND");
+            if (newIds.includes(ids[i]))
+              requireThat(
+                !a.deleted &&
+                  !a.deleting &&
+                  (a.ownerId === p.uid || (a.parents || []).includes(key)),
+                403,
+                "MEDIA_FORBIDDEN",
+              );
+            const parents = new Set<string>(a.parents || []);
+            if (oldIds.includes(ids[i])) parents.delete(key);
+            if (newIds.includes(ids[i])) parents.add(key);
+            requireThat(parents.size <= 20);
+            writes["security_media/" + ids[i]] = {
+              ...a,
+              parents: [...parents],
+            };
+          }
+          return { value: null, writes };
+        },
+      );
+      res.json({ ok: true });
+    }),
+  );
+  app.post(
+    "/api/interactions",
+    wrap(async (req, res) => {
+      const p: Principal | null = res.locals.p,
+        { collection: c, id, action } = req.body;
+      requireThat(
+        ["posts", "stories", "students", "teachers"].includes(c) &&
+          validId(id) &&
+          ["like", "comment", "deleteComment", "view"].includes(action),
+      );
+      if (["students", "teachers"].includes(c)) requireThat(action === "view");
+      authenticated(p);
+      csrfCheck(req, p);
+      requireThat(
+        !p.account.mustChangePassword || action === "view",
+        403,
+        "PASSWORD_CHANGE_REQUIRED",
+      );
+      await rateLimit(
+        store,
+        "interaction:" + p.uid,
+        action === "comment" ? 6 : 30,
+        60000,
+      );
+      const key = c + "/" + id,
+        rel =
+          "security_interactions/" + digest(key + ":" + action + ":" + p.uid);
+      const cfg = await config();
+      feature(c, cfg);
+      const result = await mutation(
+        p,
+        [key, rel],
+        "content." + action,
+        key,
+        ([d, relation]) => {
+          requireThat(d && visible(c, d, p), 404, "NOT_FOUND");
+          const next = { ...d },
+            writes: Record<string, RecordData> = {};
+          let out: any = { ok: true };
+          if (action === "view" || action === "like") {
+            const field = action === "view" ? "viewCount" : "likes_count";
+            if (!relation) {
+              next[field] = (Number(next[field]) || 0) + 1;
+              writes[rel] = { uid: p.uid, createdAt: Date.now() };
+            }
+            out[field] = Number(next[field]) || 0;
+          } else if (action === "comment") {
+            requireThat(
+              c === "posts" &&
+                !d.commentLocked &&
+                typeof req.body.content === "string" &&
+                req.body.content.trim().length > 0 &&
+                req.body.content.length <= 2000,
+            );
+            requireThat(
+              !(cfg.blockedWords || []).some((w: string) =>
+                req.body.content.toLowerCase().includes(w.toLowerCase()),
+              ),
+              400,
+              "CONTENT_FILTERED",
+            );
+            const comments = d.comments || [];
+            requireThat(comments.length < 100, 409, "COMMENT_LIMIT");
+            const comment = {
+              id: randomToken(),
+              post_id: id,
+              author: p.account.displayName || p.account.username,
+              user_id: p.uid,
+              content: req.body.content.trim(),
+              created_at: new Date().toISOString(),
+            };
+            next.comments = [...comments, comment];
+            out = { comment };
+          } else {
+            const comment = (d.comments || []).find(
+              (x: any) => x.id === req.body.commentId,
+            );
+            requireThat(
+              comment &&
+                (comment.user_id === p.uid || can(p, "feed.moderate", d)),
+              403,
+              "FORBIDDEN",
+            );
+            next.comments = d.comments.filter(
+              (x: any) => x.id !== req.body.commentId,
+            );
+          }
+          writes[key] = next;
+          return { value: out, writes };
+        },
+      );
+      res.json(result);
+    }),
+  );
+  app.post(
+    "/api/reports",
+    wrap(async (req, res) => {
+      const p = writeUser(req, res),
+        { collection: c, id, reason } = req.body;
+      requireThat(
+        ["posts", "stories", "messages"].includes(c) &&
+          validId(id) &&
+          typeof reason === "string" &&
+          reason.length >= 3 &&
+          reason.length <= 1000,
+      );
+      await rateLimit(store, "report:" + p.uid, 5, 3600000);
+      const d = await store.get(c + "/" + id);
+      requireThat(d && visible(c, d, p), 404, "NOT_FOUND");
+      const rid = randomToken();
+      await mutation(p, [], "report.create", rid, () => ({
+        value: null,
+        writes: {
+          ["security_reports/" + rid]: {
+            reporterId: p.uid,
+            collection: c,
+            documentId: id,
+            reason,
+            selectedContent: project(c, id, d, p),
+            classRoom: p.account.classRooms?.[0] || "",
+            status: "open",
+            createdAt: Date.now(),
+          },
+        },
+      }));
+      res.json({ id: rid });
+    }),
+  );
+  app.get(
+    "/api/admin/reports",
+    wrap(async (req, res) => {
+      const p: Principal | null = res.locals.p;
+      authenticated(p);
+      requireThat(
+        p.account.role === "owner" ||
+          p.account.permissions?.includes("reports.review"),
+        403,
+        "FORBIDDEN",
+      );
+      const after =
+        typeof req.query.after === "string" ? req.query.after : undefined;
+      if (after) requireThat(validId(after));
+      const rows = await store.list("security_reports", [], after, 100);
+      res.json({
+        items: rows
+          .filter((r) => can(p, "reports.review", r.data))
+          .map((r) => ({ id: r.id, ...r.data })),
+        next: rows.length === 100 ? rows.at(-1)!.id : null,
+      });
+    }),
+  );
+  let uploads = 0;
+  const upload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 20 * 1024 * 1024, files: 1, fields: 0, parts: 1 },
+  }).single("file");
+  app.post(
+    "/api/media",
+    (req, res, next) => {
+      (async () => {
+        const p = writeUser(req, res);
+        requireThat(
+          !p.account.mustChangePassword,
+          403,
+          "PASSWORD_CHANGE_REQUIRED",
+        );
+        const cfg = await config();
+        requireThat(
+          !cfg.uploadLock &&
+            (p.account.role === "owner" || (!cfg.readOnly && !cfg.maintenance)),
+          403,
+          "UPLOAD_LOCKED",
+        );
+        await rateLimit(store, "upload:" + p.uid, 20, 3600000);
+        requireThat(uploads < 4, 429, "UPLOAD_BUSY");
+        uploads++;
+        let finished = false;
+        const release = () => {
+          if (!finished) {
+            finished = true;
+            uploads--;
+          }
+        };
+        res.once("finish", release);
+        res.once("close", release);
+        upload(req, res, next);
+      })().catch(next);
+    },
+    wrap(async (req, res) => {
+      const p = writeUser(req, res);
+      requireThat(req.file);
+      const mime = await validateFile(req.file.buffer, req.file.mimetype);
+      const uploaded = await media.upload(req.file.buffer, mime),
+        id = randomToken();
+      try {
+        await mutation(p, [], "media.upload", id, () => ({
+          value: null,
+          writes: {
+            ["security_media/" + id]: {
+              ...uploaded,
+              ownerId: p.uid,
+              parents: [],
+              createdAt: Date.now(),
+              deleted: false,
+            },
+          },
+        }));
+      } catch (e) {
+        await media.destroy(uploaded).catch(() => {});
+        throw e;
+      }
+      res.json({ url: "/api/media/" + id, id });
+    }),
+  );
+  app.get(
+    "/api/media/:id",
+    wrap(async (req, res) => {
+      const id = req.params.id;
+      requireThat(validId(id));
+      const a = await store.get("security_media/" + id),
+        p: Principal | null = res.locals.p;
+      requireThat(a && !a.deleted && !a.deleting, 404, "NOT_FOUND");
+      let allowed = !!p && a.ownerId === p.uid;
+      if (!allowed)
+        for (const parent of a.parents || []) {
+          const [c, pid] = parent.split("/");
+          if (!COLLECTIONS.has(c)) continue;
+          const d = await store.get(parent);
+          if (d && visible(c, d, p) && assetIds(d).includes(id)) {
+            allowed = true;
+            break;
+          }
+        }
+      requireThat(allowed, 404, "NOT_FOUND");
+      const upstream = await media.download(a);
+      res.set({
+        "Content-Type": a.mime,
+        "Content-Disposition": "inline",
+        "Cache-Control": "private, no-store",
+      });
+      requireThat(upstream.body, 502, "MEDIA_UNAVAILABLE");
+      const stream = Readable.fromWeb(upstream.body as any);
+      req.on("close", () => stream.destroy());
+      stream.on("error", () => res.destroy());
+      stream.pipe(res);
+    }),
+  );
+  app.post(
+    "/api/cloudinary-delete",
+    wrap(async (req, res) => {
+      const p = writeUser(req, res),
+        id = req.body.id;
+      requireThat(
+        validId(id),
+        409,
+        "LEGACY_MEDIA_REVIEW",
+        "Media lama memerlukan migrasi terverifikasi.",
+      );
+      await mutation(
+        p,
+        ["security_media/" + id],
+        "media.requestDelete",
+        id,
+        ([a]) => {
+          requireThat(a && a.ownerId === p.uid, 403, "FORBIDDEN");
+          return {
+            value: null,
+            writes: { ["security_media/" + id]: { ...a, pendingDelete: true } },
+          };
+        },
+      );
+      res.json({ ok: true });
+    }),
+  );
+  app.post(
+    "/api/nusa-ai",
+    wrap(async (req, res) => {
+      const p = writeUser(req, res),
+        cfg = await config();
+      requireThat(
+        !p.account.mustChangePassword,
+        403,
+        "PASSWORD_CHANGE_REQUIRED",
+      );
+      requireThat(
+        cfg.aiEnabled !== false && !cfg.maintenance,
+        403,
+        "AI_DISABLED",
+      );
+      requireThat(ai, 503, "AI_UNAVAILABLE", "Nusa AI belum tersedia.");
+      const { message, history = [] } = req.body;
+      requireThat(
+        typeof message === "string" &&
+          message.trim().length > 0 &&
+          message.length <= 2000 &&
+          Array.isArray(history) &&
+          history.length <= 10 &&
+          history.every(
+            (x) =>
+              x &&
+              ["user", "ai"].includes(x.sender) &&
+              typeof x.text === "string" &&
+              x.text.length <= 2000,
+          ),
+      );
+      await rateLimit(store, "ai:" + p.uid, 10, 600000);
+      await rateLimit(store, "ai:global", 500, 86400000);
+      const lease = "security_ai_leases/" + p.uid;
+      await mutation(p, [lease], "ai.request", "nusa", ([a]) => {
+        requireThat(!a || a.until < Date.now(), 429, "AI_BUSY");
+        return {
+          value: null,
+          writes: { [lease]: { until: Date.now() + 40000 } },
+        };
+      });
+      try {
+        const context: any = {};
+        for (const c of ["schedules", "teachers", "achievements"])
+          context[c] = (await store.list(c, [], undefined, 50))
+            .filter((r) => visible(c, r.data, p))
+            .slice(0, 15)
+            .map((r) => project(c, r.id, r.data, p));
+        res.json({ text: await ai(message, history, context) });
+      } finally {
+        await store.atomic([lease], () => ({
+          value: null,
+          writes: { [lease]: null },
+        }));
+      }
+    }),
+  );
+  app.use("/api", (_req, res) =>
+    res
+      .status(404)
+      .json({ code: "NOT_FOUND", error: "Endpoint tidak ditemukan." }),
+  );
+  app.use((error: any, _req: Request, res: Response, _next: NextFunction) => {
+    const status =
+      error instanceof HttpError
+        ? error.status
+        : error?.type === "entity.too.large" ||
+            error?.code === "LIMIT_FILE_SIZE"
+          ? 413
+          : error instanceof multer.MulterError || error instanceof SyntaxError
+            ? 400
+            : 500;
+    if (status === 429) res.set("Retry-After", "60");
+    if (!res.headersSent)
+      res
+        .status(status)
+        .json({
+          code: error instanceof HttpError ? error.code : "REQUEST_FAILED",
+          error:
+            error instanceof HttpError
+              ? error.message
+              : "Permintaan gagal diproses.",
+        });
+  });
+  return app;
 }

@@ -42,15 +42,7 @@ export default function WelcomeModal({ onSuccess }: WelcomeModalProps) {
       handleClose();
       onSuccess();
     } catch (err: any) {
-      if (err.code === 'auth/invalid-credential' || err.code === 'auth/user-not-found' || err.message?.includes('invalid-credential')) {
-        console.warn('WelcomeModal: invalid credentials');
-        setError('Kredensial dari kartu tidak cocok.');
-      } else if (err.code === 'auth/operation-not-allowed') { 
-        setError('Fitur Email/Password Auth belum diaktifkan di Firebase Console.'); 
-      } else {
-        console.warn('WelcomeModal auth note:', err?.message || err);
-        setError('Kredensial dari kartu tidak valid.'); 
-      }
+      setError(err?.message || 'Kredensial dari kartu tidak valid.');
     } finally {
       setLoading(false);
     }
@@ -59,6 +51,7 @@ export default function WelcomeModal({ onSuccess }: WelcomeModalProps) {
     const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if(!['image/png','image/jpeg','image/webp'].includes(file.type)||file.size>8*1024*1024){setError('Gunakan foto JPEG, PNG, atau WebP maksimal 8 MB.');return;}
     
     setError('');
     
@@ -70,6 +63,7 @@ export default function WelcomeModal({ onSuccess }: WelcomeModalProps) {
       
       const img = new Image();
       img.onload = () => {
+        if(img.width*img.height>24000000){setError('Resolusi kartu terlalu besar.');setIsScanning(false);return;}
         const canvas = document.createElement('canvas');
         canvas.width = img.width;
         canvas.height = img.height;
@@ -108,6 +102,7 @@ export default function WelcomeModal({ onSuccess }: WelcomeModalProps) {
           }
         }
       };
+      img.onerror=()=>{setIsScanning(false);setPreviewImage(null);setError('Gambar tidak dapat dibaca.');};
       img.src = imgDataUrl;
     };
     reader.readAsDataURL(file);

@@ -1,3 +1,4 @@
+import {api} from '../lib/api';
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Bell, Send, User, Reply, CheckCircle2, Loader2, X, AlertTriangle, ShieldCheck, Mail, Info } from 'lucide-react';
@@ -370,6 +371,7 @@ export default function Inbox() {
                     <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-wrap">
                       {msg.content}
                     </p>
+                    <button className="text-[10px] text-slate-500 mt-2 underline" onClick={async()=>{const reason=window.prompt('Laporkan pesan ini. Hanya pesan yang dipilih beserta alasan Anda yang akan dibagikan kepada moderator. Tuliskan alasan:');if(!reason)return;try{await api('/reports',{collection:'messages',id:msg.id,reason});alert('Laporan terkirim.');}catch(e:any){alert(e.message||'Laporan belum terkirim.');}}}>Laporkan pesan ini</button>
                     <div className="mt-2 text-[10px] text-slate-400">
                       Pengirim: <span className="font-semibold text-slate-600 dark:text-slate-300">{msg.senderName || 'Admin'}</span>
                     </div>
@@ -407,6 +409,7 @@ export default function Inbox() {
                     <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-wrap">
                       {msg.content}
                     </p>
+                    <button className="text-[10px] text-slate-500 mt-2 underline" onClick={async()=>{const reason=window.prompt('Laporkan pesan ini. Hanya pesan yang dipilih beserta alasan Anda yang akan dibagikan kepada moderator. Tuliskan alasan:');if(!reason)return;try{await api('/reports',{collection:'messages',id:msg.id,reason});alert('Laporan terkirim.');}catch(e:any){alert(e.message||'Laporan belum terkirim.');}}}>Laporkan pesan ini</button>
                   </div>
                 ))
               )}

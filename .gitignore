@@ -11,3 +11,9 @@ playwright-report/
 *service-account*.json
 *Credentials.json
 backups/
+
+scripts/.audit*
+
+# Original Studio metadata is not runtime configuration for this backend.
+firebase-applet-config.json
+firebase-blueprint.json

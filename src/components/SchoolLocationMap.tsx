@@ -19,7 +19,7 @@ import {
   RotateCcw
 } from 'lucide-react';
 
-const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || 'AIzaSyCVnoiEfmJU53NLnqBYW5EMChTbGyoW9to';
+const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '';
 
 // Exact coordinates for 66X6+RR6 Yayasan Pendidikan Nahdliyah Islamiyah, Trigonco Utara, Asembagus
 const SCHOOL_COORDINATES = {
@@ -214,7 +214,7 @@ export default function SchoolLocationMap() {
           
           {/* Left Column: Interactive Google Map */}
           <div className="lg:col-span-8 rounded-3xl overflow-hidden border border-black/10 shadow-xl bg-white relative min-h-[460px] md:min-h-[540px] flex flex-col">
-            <APIProvider apiKey={GOOGLE_MAPS_API_KEY}>
+            {GOOGLE_MAPS_API_KEY ? <APIProvider apiKey={GOOGLE_MAPS_API_KEY}>
               <div className="relative w-full h-full min-h-[460px] md:min-h-[540px]">
                 <Map
                   defaultCenter={SCHOOL_COORDINATES}
@@ -286,7 +286,7 @@ export default function SchoolLocationMap() {
                   )}
                 </Map>
               </div>
-            </APIProvider>
+            </APIProvider> : <div className="flex-1 flex items-center justify-center p-8 text-center"><a href={GOOGLE_MAPS_URL} target="_blank" rel="noopener noreferrer" className="text-emerald-700 font-semibold">Lihat lokasi sekolah di Google Maps</a></div>}
 
             {/* Bottom bar inside Map Container */}
             <div className="bg-[#121212] text-white px-5 py-3.5 flex flex-wrap items-center justify-between gap-3 text-xs">
