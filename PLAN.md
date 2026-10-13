@@ -12,16 +12,16 @@ Diperbarui 13 Oktober 2026. Branch `codex/angkatanku-security-v2`, draft PR #1. 
 - [x] Tahap 5 lokal: TypeScript/build, 48 unit/API, 4 emulator (216 penolakan request langsung), 20 browser, 1 runtime HTTPS lokal lulus. Provider dummy, bukan bukti produksi.
 - [x] Regresi pagination subkoleksi chat, respons AI, greeting/logout dan reauth moderasi Story diperbaiki dan diuji ulang.
 - [x] Runtime Vercel same-origin serta signed direct upload Cloudinary dengan pemeriksaan server disiapkan; native handler gagal tertutup 503 ketika env belum tersedia.
-- [x] Akses Vercel token baru berhasil membaca project; hambatan token lama 403 sudah tidak berlaku.
+- [x] Akses proyek Vercel berhasil diverifikasi.
 - [x] Sampel performa lokal sebelum/sesudah; audit dependency 0 advisory.
 
 ## Penyelesaian operasional
 
-- [ ] Simpan checkpoint GitHub dan verifikasi deployment preview Vercel terbaru.
-- [ ] Isi environment server dengan kredensial pengganti yang privat. Key Firebase lama terekspos dan izin membuat/menghapus key tidak tersedia (403); jangan memperluas key lama.
+- [x] Checkpoint GitHub tersimpan; preview Vercel READY, halaman 200/API fail-closed 503 dan source tidak bocor. Login produksi belum dikonfigurasi.
+- [ ] Lengkapi konfigurasi privat melalui handoff pemilik dan verifikasi provider.
 - [ ] Tes provider nyata pada data dummy terisolasi: Cloudinary upload/stream/delete dan Gemini.
 - [ ] Backup produksi/rules aktif; terapkan migrasi dengan UID yang sama dan kredensial baru, backend/frontend/rules bersama pada database bernama yang benar.
-- [ ] Cabut password/kartu/API key/preset lama; batasi Maps key. Hanya dua kartu CDN telah diperiksa, bukan inventaris lengkap.
+- [ ] Verifikasi inventaris kartu/media dan siklus rotasi kredensial/preset; batasi Maps key.
 - [ ] Pasang retensi, GC terjadwal, budget/rate perimeter, verifikasi recovery dan uji beban/soak hosting.
 
 Lihat [laporan V2](docs/V2_REPORT_ID.md), [pengujian](docs/TEST_REPORT.md), [deployment](docs/DEPLOYMENT_STATUS.md), [runbook Vercel](docs/DEPLOYMENT_VERCEL.md), dan [rollback](docs/MIGRATION_ROLLBACK.md). Status lokal selesai tidak berarti layanan live sudah aman.

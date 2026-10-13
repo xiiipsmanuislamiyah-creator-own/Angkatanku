@@ -55,3 +55,5 @@ Belum diverifikasi: Cloudinary upload/delivery/delete nyata dan file besar di Ve
 Scan terakhir terhadap 61 nilai rahasia dikenal pada 192 file source/docs/build: 0 file cocok. Ini tidak mencakup seluruh Git history atau seluruh pola secret yang tidak dikenal. Visual QA juga menemukan scroll awal Nusa menggeser seluruh halaman; autoscroll kini hanya di dalam viewport percakapan, dengan regresi posisi scroll awal.
 
 Preview Vercel pertama berhasil build namun runtime 500 dengan ERR_MODULE_NOT_FOUND pada import server/runtime. Semua import relatif backend/API diberi ekstensi .js; tes tambahan mengompilasi transitive imports memakai NodeNext dan memuatnya lewat proses Node asli tanpa tsx. 48/48 unit/API dan TypeScript/build lulus setelah perbaikan. Total menjadi 73 tes; verifikasi preview ulang dicatat di DEPLOYMENT_STATUS.md.
+
+Verifikasi HTTPS preview Vercel sesudah perbaikan native ESM: /home 200; /api/auth/session 503 JSON SERVICE_UNCONFIGURED/no-store; tiga path source/secret hanya HTML SPA, CSP/HSTS/nosniff aktif. Browser hosting tidak dapat diselesaikan karena CA proxy dan timeout; tidak dihitung sebagai PASS E2E produksi.

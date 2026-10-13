@@ -4,20 +4,19 @@
 
 ## Target dan prasyarat
 
-Target yang dibaca: project gen-lang-client-0067546861, database bernama ai-studio-vibrantpalettecr-286aa42c-694a-4352-9575-ef8e830e7d87. Jangan mengasumsikan database (default). `.env.example` memakai demo agar tidak menulis produksi tanpa konfigurasi eksplisit.
+Gunakan project dan database target yang diberikan melalui handoff privat. Jangan mengasumsikan database (default); periksa apakah project memakai database bernama. `.env.example` memakai demo agar tidak menulis produksi tanpa konfigurasi eksplisit.
 
-Diperlukan akses deployment layanan Node/HTTPS proyek dan IAM runtime terbatas untuk database target. ADC/workload identity diutamakan. Secret Cloudinary/Gemini dipasang di environment server/secret manager, bukan variabel VITE_ atau argumen command. Gunakan key baru yang telah diuji sebelum key terekspos dicabut; jangan mencabut satu-satunya jalur administrasi yang masih diperlukan tanpa pengganti.
+Runtime Vercel tersedia melalui api/index.ts. Backend dan API satu origin; signed direct upload menghindari batas request body function, sementara completion dan delivery tetap memeriksa file/audience di server. Lihat DEPLOYMENT_VERCEL.md untuk konfigurasi umum dan DEPLOYMENT_STATUS.md untuk hasil preview. Secret provider hanya di environment server, tanpa awalan VITE_ atau argumen command.
 
-Vercel yang diberikan belum mengizinkan pembacaan project (403), termasuk setelah team scope ditambahkan. Cloud Run inventory ditolak karena API belum aktif (SERVICE_DISABLED). Pemeriksaan IAM berikutnya berhasil dan mengonfirmasi bahwa identitas yang ada tidak memiliki izin aktivasi/deployment yang diuji; lihat DEPLOYMENT_STATUS.md. Bentuk runtime Node yang sekarang sesuai untuk backend dan proxy satu origin. Jangan menganggap endpoint upload 20 MB dapat dipasang sebagai Vercel Function biasa: dokumentasi Vercel menetapkan payload 4,5 MB. Evaluasi hosting aktual sebelum deploy, tanpa menambah database baru.
+ADC/workload identity diutamakan bila didukung hosting. Untuk skrip migrasi yang perlu REST, gunakan FIRESTORE_PREFER_REST=true. Identitas runtime harus dibatasi ke database target; akses operator migrasi dan backup dikelola terpisah.
 
-## Pemetaan yang sudah dilakukan tanpa penulisan
+## Prinsip pemetaan
 
-- 74 akun Firebase Auth, 40 dokumen students, 0 teachers, 0 security_accounts.
-- 56 akun source dipetakan ke 56 UID unik: 36 siswa dan 20 guru.
-- 39 profil existing dipertahankan dan 17 profil direncanakan dibuat; 18 akun Auth di luar source dibiarkan tidak berubah. Tidak ada penghapusan 40 profil lama.
-- Profil guru yang sudah tersimpan di students mempertahankan collection/ID, dengan profileKind teacher. Tidak memindahkan data berdasarkan tebakan nama.
-- Owner ditetapkan dari kartu yang secara eksplisit diidentifikasi pengguna sebagai miliknya, cocok username/identitas source secara unik dan UID Auth. Password QR owner berbeda dari ZIP; password itu tidak dipakai untuk bootstrap. Contoh kartu guru cocok dengan source. Hanya dua kartu diperiksa.
-- Manifest sensitif disimpan di luar Git. Password/kunci/QR tidak dimasukkan laporan. Manifest harus dibuat ulang/divalidasi lagi terhadap snapshot terkini sebelum apply.
+- Pertahankan UID Auth serta collection/ID profil existing; jangan mencocokkan identitas dengan tebakan nama.
+- Siswa/guru dibedakan lewat profileKind, bukan role keamanan. Profil guru legacy dapat tetap berada di collection existing.
+- Tetapkan tepat satu owner dari identitas yang telah diverifikasi melalui jalur privat; password bootstrap harus baru.
+- Akun di luar manifest tidak dihapus atau diubah.
+- Manifest, snapshot, password/kunci/QR dan rincian akun berada di luar Git. Validasi ulang terhadap snapshot terkini sebelum apply.
 
 ## Persiapan aman
 
@@ -53,7 +52,7 @@ Owner mereset password sementara akun, mengaktifkan akses melalui pusat kontrol,
 {
   "firestore": [
     {
-      "database": "ai-studio-vibrantpalettecr-286aa42c-694a-4352-9575-ef8e830e7d87",
+      "database": "DATABASE_ID_TARGET",
       "rules": "firestore.rules"
     }
   ]

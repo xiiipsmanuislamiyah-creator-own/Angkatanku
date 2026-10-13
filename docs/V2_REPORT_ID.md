@@ -26,8 +26,10 @@ Hasil nyata: 48 unit/API + 4 emulator + 20 browser + 1 runtime HTTPS lokal = **7
 
 ## Risiko dan kesiapan
 
-Secret/kartu publik lama belum dicabut; key Firebase yang tersedia tidak memiliki izin rotasi. Token Vercel memberi akses deployment, bukan hak mengelola key provider lain. Migrasi/rules produksi dan penerbitan ulang kartu belum dijalankan. Kriteria tidak ada risiko tinggi diketahui pada layanan live **belum tercapai**. Tidak ada klaim aman 100%.
+Rilis fungsional memerlukan konfigurasi privat, tes provider, migrasi terkoordinasi dan verifikasi produksi. Rincian risiko dan akses operasional diberikan dalam laporan privat pemilik. Tidak ada klaim aman 100% atau seluruh tahap selesai pada layanan live.
 
 Batas saat ini: chat polling tanpa push offline, window UI 200 pesan dengan pagination; query legacy UI 500 dokumen; retrieval Memory teks pada subset terfilter, bukan indeks semantik seluruh arsip. GC/retensi terjadwal dan recovery produksi belum dipasang. Validasi file bukan antivirus universal dan budget provider diperlukan. Kamera fisik, Safari/Firefox, perangkat nyata, aksesibilitas menyeluruh, load/soak belum diuji.
 
-Pengembangan Tahap 2–4 telah dilakukan atas instruksi lanjutan owner; peluncuran fungsional menunggu gate kredensial/provider/migrasi. Tindakan pemilik yang masih diperlukan ada pada DEPLOYMENT_STATUS.md, tanpa meminta tes manual.
+Pengembangan Tahap 2–4 telah dilakukan atas instruksi lanjutan owner; peluncuran fungsional menunggu gate kredensial/provider/migrasi. Rincian tindakan pemilik ada dalam laporan privat, tanpa meminta tes manual.
+
+Preview source c42f4a6 telah READY dan diverifikasi melalui HTTPS. API tanpa env mengembalikan 503 yang terkontrol; ini belum login produksi. Lihat DEPLOYMENT_STATUS.md untuk URL dan keterbatasan tes hosting.

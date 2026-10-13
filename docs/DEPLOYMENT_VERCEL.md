@@ -6,8 +6,8 @@ Vite di dist/client, Express melalui api/index.ts dan server/runtime.ts, API/SPA
 
 | Variabel | Isi |
 |---|---|
-| FIREBASE_PROJECT_ID | gen-lang-client-0067546861 |
-| FIREBASE_DATABASE_ID | ai-studio-vibrantpalettecr-286aa42c-694a-4352-9575-ef8e830e7d87 |
+| FIREBASE_PROJECT_ID | ID proyek Firebase target |
+| FIREBASE_DATABASE_ID | ID database Firestore target (periksa database bernama) |
 | FIREBASE_SERVICE_ACCOUNT_JSON | JSON key pengganti, project cocok, izin runtime minimum |
 | APP_ORIGINS | Origin HTTPS final, dipisah koma; tanpa path/trailing slash |
 | CLOUDINARY_CLOUD_NAME | Cloud project yang digunakan |
