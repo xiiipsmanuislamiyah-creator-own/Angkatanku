@@ -1,0 +1,8 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // All clients (including forged role claims) use the audited server API.
+    // Admin SDK is protected by IAM; its access is NOT evaluated by these rules.
+    match /{document=**} { allow read, write: if false; }
+  }
+}

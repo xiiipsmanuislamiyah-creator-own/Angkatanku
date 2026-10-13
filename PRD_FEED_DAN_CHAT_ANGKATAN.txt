@@ -1,0 +1,258 @@
+================================================================================
+PRODUCT REQUIREMENT DOCUMENT (PRD)
+FITUR UTAMA: FEED ANGKATAN (INSTAGRAM-GRADE) & CHAT KOMUNITAS ABADI
+================================================================================
+Tanggal: 2026-09-26
+Status: Tahap Awal (Design & Architecture Blueprint)
+Versi: 1.0.0
+Penyusun: Developer & Core Engineering Team
+
+--------------------------------------------------------------------------------
+1. LATAR BELAKANG & NILAI FILOSOFIS (VALUE PROPOSITION)
+--------------------------------------------------------------------------------
+Masalah Utama Grup Konvensional (WhatsApp / Telegram):
+- Setelah lulus sekolah/kuliah, mayoritas alumni berganti nomor handphone,
+  ganti perangkat, atau membersihkan kontak.
+- Akibatnya, keanggotaan grup terputus, kontak hilang, dan relasi angkatan
+  mati secara perlahan.
+
+Solusi Platform Web Angkatan:
+- Identitas siswa/alumni terikat langsung secara permanen pada Akun Web & Kartu
+  Pelajar Digital mereka, bukan pada nomor telepon seluler sementara.
+- Selama website tetap aktif dan pengguna pernah mendaftar, jalur komunikasi,
+  arsip kenangan, dan relasi lintas angkatan tetap utuh seumur hidup.
+- Menjadikan "Feed Angkatan" dan "Chat Siswa & Angkatan" sebagai fitur mahakarya
+  (flagship brand) penarik interaksi harian maupun nostalgia jangka panjang.
+
+--------------------------------------------------------------------------------
+2. FITUR 1: FEED ANGKATAN (INSTAGRAM-GRADE ARCHITECTURE)
+--------------------------------------------------------------------------------
+Tujuan:
+Menciptakan pengalaman feed visual yang 100% presisi, mulus, dan setara
+dengan standar aplikasi Instagram (bukan sekadar mading statis).
+
+2.1. Hak Unggah & Akses Pengunjung (Feed Posting & Visitor Policy):
+  - Hak Unggah: Siapapun yang SUDAH LOGIN (Siswa, Alumni, Guru, maupun Developer/Admin)
+    berhak mengunggah momen foto/video ke Feed Angkatan. Guru memiliki badge
+    khusus "Guru" yang terhormat di postingan mereka.
+  - Akses Pengunjung Belum Login (Tamu Publik):
+    * Mode Pratinjau (Read-Only): Tamu hanya bisa melihat tampilan feed dan story.
+    * Proteksi Interaksi: Tamu TIDAK BISA melakukan aksi apapun (tidak bisa Like,
+      tidak bisa Komentar, tidak bisa Simpan, tidak bisa Posting).
+    * Jika tamu mengetuk tombol Like, Komentar, atau Posting, sistem akan menampilkan
+      dialog ramah yang mengarahkan untuk Login terlebih dahulu.
+
+2.2. Rel Story Instagram (Story Tray & Immersive Viewer):
+  - Terletak tepat di bagian paling atas halaman Feed (di atas deretan postingan).
+  - Desain & Interaksi Rel Story (Horizontal Scroll):
+    * Lingkaran Pertama: "Cerita Anda" (Avatar pengguna saat ini) dengan lencana
+      tombol (+) warna biru/putih untuk membuat Story baru dalam 24 jam.
+    * Lingkaran Teman/Angkatan & Guru: Menampilkan avatar yang memiliki story aktif.
+    * Gradient Story Ring: Lingkaran berbingkai gradien dinamis khas Instagram
+      (magenta/oranye/kuning) jika ada story baru yang belum dilihat, dan
+      berubah menjadi abu-abu tipis jika semua slide story sudah dilihat.
+    * Label nama singkat (username/nama panggilan) di bawah masing-masing avatar
+      dengan pemotongan rapi (ellipsis: "bukan_mik...").
+  - Penampil Story Layar Penuh (Immersive Story Viewer):
+    * Saat salah satu lingkaran story diklik, membuka viewer layar penuh imersif.
+    * Bar progress timer di bagian atas (indikator durasi tiap story, misal 5-7 detik).
+    * Navigasi tap kiri (mundur slide), tap kanan (maju slide), dan tahan (pause).
+    * Opsi balasan instan (Kirim pesan/reaksi cepat ke pemilik story) di bagian bawah.
+
+2.3. Penataan Akun & Tombol Lapor (Post Header & Report System):
+  - Tinggi baris terstandarisasi (h-14 hingga h-15) dengan layout flex sejajar.
+  - Avatar pengguna berbentuk lingkaran (40x40px atau 44x44px) yang dibungkus
+    lingkaran gradien Story (Instagram gradient ring) jika memiliki Story aktif.
+  - Nama akun (username) dicetak tebal (font-semibold text-sm), berdampingan
+    dengan Badge Angkatan/Guru (misal: '24, [Guru], [Owner]) atau Badge Verifikasi.
+  - Baris kedua (sub-label): Keterangan kelas, mata pelajaran guru, lokasi, atau info audio.
+  - Sisi kanan: Tombol titik tiga (•••) untuk membuka menu konteks:
+    * Salin Tautan, Simpan Postingan.
+    * 🚩 "Laporkan Postingan" (Report):
+      - Jika ditemukan konten tidak senonoh, SARA, atau melanggar etika, pengguna
+        dapat mengetuk opsi Laporkan dan memilih alasan.
+      - Laporan langsung terkirim secara instan ke Notifikasi Dashboard Admin Panel
+        milik Owner/Developer untuk peninjauan dan penghapusan 1-klik.
+    * Opsi Khusus Owner/Pembuat: Kunci Komentar, Pin ke Atas, Sembunyikan, Hapus.
+
+2.4. Struktur & Penanganan Media (Gambar & Video Berbeda Ukuran):
+  - Edge-to-edge di tampilan mobile (lebar penuh 100%, 0 padding horizontal).
+  - Standarisasi Rasio:
+    * 4:5 (Portrait) -> Rekomendasi utama untuk tampilan layar sentuh penuh.
+    * 1:1 (Square)   -> Tampilan kotak klasik.
+    * 1.91:1 (Landscape) -> Tampilan lanskap melebar.
+  - Aturan Multi-Slide (Rule of First Slide):
+    * Slide pertama menentukan rasio (aspect ratio) untuk seluruh slider post.
+    * Media berikutnya dengan rasio berbeda tidak boleh mengubah tinggi kartu
+      secara mendadak. Menggunakan teknik Letterbox Cerdas (latar belakang solid
+      dengan object-fit: contain atau auto-center cover).
+  - Penanganan Video:
+    * Frame stabil pada rasio standar.
+    * Floating Sound Control: Ikon mute/unmute bulat semi-transparan melayang
+      di pojok kanan bawah video.
+    * Autoplay hemat daya yang dipicu oleh Intersection Observer (hanya berputar
+      saat video berada di dalam viewport layar).
+
+2.5. Slider & Indikator Interaksi (Carousel Navigation):
+  - Gesture swipe di layar mobile dengan CSS scroll-snap horizontal yang mulus.
+  - Tombol navigasi panah melayang transparan (< dan >) di desktop/tablet.
+  - Dots Pagination Indicator:
+    * Terletak di tengah bawah media.
+    * Titik aktif berwarna terang/kontras, titik lainnya redup.
+    * Dynamic dot sizing jika jumlah media lebih dari 5 item.
+
+2.6. Action Bar & Engagement Metrics:
+  - Baris aksi tepat di bawah media:
+    * Kiri : [❤️ Like]  [💬 Komentar]  [🔄 Repost/Bagikan ke Story]  [✈️ Kirim DM]
+    * Kanan: [🔖 Bookmark / Simpan Postingan]
+  - Interaksi Double-Tap to Like:
+    * Mengetuk 2x cepat pada foto/video memunculkan animasi hati putih meledak
+      (heart pulse burst) di tengah layar dan mengubah ikon like menjadi merah.
+  - Teks metrik suka: "Disukai oleh [nama] dan [x] lainnya".
+  - Area Caption:
+    * Username tebal di awal teks, diikuti caption asli.
+    * Jika lebih dari 2 baris, terpotong dengan tombol "...selengkapnya" (expand).
+  - Tag Akun Teman (Tag People):
+    * Mengetuk foto memunculkan gelembung nama teman yang ditandai dalam foto.
+  - Penanda waktu relatif: "3 hari yang lalu", "15 September" di bagian bawah.
+
+2.7. Lembar Komentar Bertingkat (Threads / Instagram-Style Comments Sheet):
+  - Membuka bottom-sheet dari bawah pada mobile atau slide-over pada desktop.
+  - Header sheet: Tombol kembali, filter urutan komentar (Populer / Terbaru).
+  - Struktur Threading:
+    * Garis vertikal tipis (thread guide line) yang menghubungkan komentar induk
+      dengan komentar balasan (replies).
+    * Badge khusus "Pembuat" (Author Badge) otomatis aktif jika komentator
+      adalah pemilik postingan.
+    * Ikon mini aksi di tiap komentar: Like komentar, Reply (balas), dan Opsi.
+  - Sticky Comment Bar:
+    * Menempel di dasar layar dengan foto avatar pengguna aktif.
+    * Input dinamis: "Balas ke [username]..." dengan tombol kirim instan.
+
+--------------------------------------------------------------------------------
+3. FITUR 2: CHAT HUB ANGKATAN (WHATSAPP-STYLE ARCHITECTURE)
+--------------------------------------------------------------------------------
+Tujuan:
+Menyediakan alur percakapan yang sangat familiar seperti WhatsApp, diakses
+langsung dari ikon pesan di Feed Angkatan, tanpa ketergantungan nomor handphone.
+
+3.1. Pemicu Akses dari Feed (Entry Point):
+  - Terdapat ikon Pesan/Chat (DM icon ala Instagram / Paper Airplane)
+    di bar navigasi atas halaman Feed Angkatan.
+  - Mengetuk ikon ini mengarahkan pengguna langsung ke Halaman Utama Chat Hub.
+
+3.2. Struktur Halaman Chat Hub (WhatsApp-Style Layout):
+  A. Bar Teratas (Pinned Headers) - DUA SALURAN GLOBAL RESMI:
+     Untuk memfasilitasi kebutuhan interaksi santai sesama teman vs silaturahmi
+     resmi bersama bapak/ibu guru, disediakan 2 saluran tersemat di paling atas:
+
+     1) 🎒 Saluran 1: "Komunitas Siswa & Alumni (Khusus Siswa)"
+        * Khusus diisi oleh sesama peserta siswa dan alumni angkatan.
+        * Wadah ngobrol santai, bercanda, tanya tugas, dan kabar teman tanpa rasa sungkan.
+     2) 👨‍🏫 Saluran 2: "Ruang Akbar Bersama Guru & Siswa"
+        * Ruang komunikasi terpadu yang menyatukan seluruh siswa, alumni, dan para Guru.
+        * Tempat silaturahmi formal/hangat, pengumuman sekolah resmi, menyapa guru,
+          meminta doa restu, serta koordinasi agenda temu akbar/reuni sekolah.
+
+     * Kebijakan Akses Pengunjung (Tamu Belum Login):
+       - Tamu hanya dapat melihat pratinjau pesan (Hanya Lihat / Read-Only).
+       - Tamu TIDAK BISA mengirim pesan apapun. Form input terkunci dengan
+         ajakan "Masuk / Login untuk bergabung dalam percakapan".
+
+  B. Area Daftar Obrolan Pribadi (Private Chats List - Bawah Saluran Global):
+     * Kondisi Awal (Belum Ada Chat):
+       - Tampilan kosong bersih (empty state) yang rapi.
+       - Terdapat Tombol (+) Mengambang (Floating Action Button khas WhatsApp)
+         dan Kolom "Cari Siswa/Guru yang Ingin di-Chat".
+     * Alur Memulai Chat Baru (+ / Cari Teman):
+       - User menekan tombol (+) atau kolom cari -> Terbuka modal direktori siswa & guru.
+       - User memilih salah satu kontak untuk membuka lembar percakapan 1-on-1.
+     * Kondisi Setelah Chat Terkirim:
+       - Percakapan otomatis masuk ke daftar obrolan aktif di bawah kedua Chat Global.
+       - Menampilkan: Foto avatar, nama lengkap, cuplikan pesan terakhir,
+         waktu kirim/terima, dan lencana belum dibaca (unread count badge).
+       - Diurutkan secara dinamis berdasarkan percakapan paling aktif/terbaru.
+       - Pesan bersifat privat murni: hanya bisa diakses oleh kedua akun terkait.
+
+3.3. Ruang Percakapan 1-on-1 (Room View):
+  - Header bersih: Avatar penerima + Nama kontak + Status (Siswa/Guru) + Tombol Kembali.
+  - Mengetuk avatar di header langsung membuka Kartu Digital Siswa/Guru mereka.
+  - Balon chat dua arah (kanan: pengirim, kiri: penerima).
+  - Tanda status centang WhatsApp (Centang 1 abu, Centang 2 abu, Centang 2 biru terbaca).
+  - Indikator real-time "Sedang mengetik..." (*Typing indicator*).
+  - Sinkronisasi instan via Firebase Firestore (onSnapshot) tanpa reload.
+  - Auto-save draft: ketikan yang belum dikirim tidak akan hilang saat keluar tab.
+  - Fitur pencarian kata kunci di dalam riwayat obrolan (*Search in conversation*).
+
+3.4. Fitur Interaksi Chat & Kebijakan Optimasi Data:
+  A. Optimasi CDN (No Photo di Chat Global):
+     - Chat Global DIBATASI MURNI TEKS & EMOJI (Tanpa fitur unggah gambar/video).
+     - Alasan: Menghindari pembengkakan kuota CDN/Cloudinary, mencegah spam media
+       di ruang publik, dan menjaga loading super cepat serta hemat kuota HP.
+  B. Interaksi Tahan & Menu Aksi Pesan (Hold / Long-Press):
+     - Tekan & Tahan Balon Pesan (Long-Press): Memunculkan menu aksi melayang:
+       * Salin Teks (Copy): Menyalin isi pesan ke clipboard pengguna.
+       * Balas (Reply / Quote): Menautkan kutipan pesan langsung di atas input box.
+       * Hapus (Delete): Menghapus pesan (opsi Hapus untuk Saya atau Tarik Pesan).
+  C. Format Waktu & Tampilan Jam:
+     - Tanda waktu presisi (format HH:mm, misal "14:35") di sudut tiap balon chat.
+     - Pembatas tanggal cerdas ("Hari Ini", "Kemarin", "24 September 2026").
+  D. Pinned Announcement Khusus Owner:
+     - Owner berhak menyematkan pesan penting berbingkai emas di bagian atas
+       Chat Global yang tidak akan tenggelam oleh obrolan baru.
+
+--------------------------------------------------------------------------------
+4. MATRIKS HAK AKSES LENGKAP: DEVELOPER/OWNER VS GURU/SISWA VS PENGUNJUNG
+--------------------------------------------------------------------------------
+Fitur / Tindakan              | Owner (Kamu)       | Siswa & Guru       | Pengunjung (Tamu)
+------------------------------+--------------------+--------------------+-------------------
+[FEED ANGKATAN]               |                    |                    |
+- Lihat Postingan & Story     | Ya                 | Ya                 | Ya (Hanya Lihat)
+- Unggah Postingan Feed       | Ya (Bebas)         | Ya (Setelah Login) | Tidak (Harus Login)
+- Beri Like (Double-Tap)      | Ya                 | Ya                 | Tidak (Harus Login)
+- Beri Komentar & Balasan     | Ya                 | Ya                 | Tidak (Harus Login)
+- Laporkan Postingan (Report) | N/A (Penerima LAP) | Ya                 | Tidak (Harus Login)
+- Terima Laporan di Dashboard | Ya                 | Tidak              | Tidak
+- Moderasi/Hapus Post Siapapun| Ya                 | Tidak              | Tidak
+- Pin / Kunci / Sembunyikan   | Ya                 | Tidak              | Tidak
+                              |                    |                    |
+[CHAT HUB & GLOBAL CHAT]      |                    |                    |
+- Masuk ke Chat Hub           | Ya                 | Ya                 | Ya (Hanya Lihat)
+- Baca Obrolan Saluran Global | Ya                 | Ya                 | Ya (Hanya Lihat)
+- Kirim Pesan di Chat Global  | Ya (Badge Owner)   | Ya (Badge Peran)   | Tidak (Harus Login)
+- Akses Saluran Bersama Guru  | Ya                 | Ya                 | Ya (Hanya Lihat)
+- Akses Saluran Khusus Siswa  | Ya                 | Siswa & Alumni     | Ya (Hanya Lihat)
+- Hapus Pesan Sendiri         | Ya                 | Ya                 | Tidak
+- Hapus Pesan Orang Lain (Mod)| Ya                 | Tidak              | Tidak
+- Kunci / Mute Chat Global    | Ya                 | Tidak              | Tidak
+- Bersihkan Chat (Purge All)  | Ya                 | Tidak              | Tidak
+- Mulai Chat Privat (+)       | Ya                 | Ya                 | Tidak (Harus Login)
+                              |                    |                    |
+[KEBIJAKAN BLOKIR / SANKSI]   |                    |                    |
+- Blokir / Suspend Akun       | Ya (Hak Mutlak)    | Tidak              | Tidak
+- Blokir Antar-Siswa Biasa    | Tidak Diizinkan    | Tidak Diizinkan    | Tidak Diizinkan
+  (Demi menjaga keutuhan & kerukunan seluruh siswa dalam satu komunitas sekolah).
+
+--------------------------------------------------------------------------------
+5. RENCANA TAHAPAN PENGERJAAN (ROADMAP)
+--------------------------------------------------------------------------------
+Tahap 1 (Fokus Utama Sekarang):
+- Restrukturisasi total halaman Feed Angkatan sesuai geometri Instagram:
+  * Post Header (Avatar + Story Ring + Username + Sub-info + Three dots).
+  * Standarisasi kontainer media (4:5 / 1:1, Letterboxing multi-ukuran).
+  * Carousel slide dengan gestur halus dan dots pagination.
+  * Double-tap to like dengan efek animasi hati.
+  * Lembar komentar bergaya Threads dengan garis penghubung balasan (thread line).
+
+Tahap 2:
+- Membangun antarmuka dan backend Chat Hub Komunitas Abadi:
+  * Dua Saluran Tersemat: Saluran Khusus Siswa & Saluran Akbar Bersama Guru.
+  * Private 1-on-1 Chat dengan integrasi direktori siswa & guru.
+  * Sinkronisasi data real-time Firestore (teks murni & emoji demi hemat CDN).
+  * Fitur interaksi: Hold to select, copy, quote, jam pesan, dan centang status.
+  * Fitur tap avatar untuk membuka kartu profil siswa.
+
+Tahap 3:
+- Integrasi navigasi terpadu di navbar/bottom bar agar Feed & Chat menjadi
+  titik fokus utama aplikasi.
+================================================================================
