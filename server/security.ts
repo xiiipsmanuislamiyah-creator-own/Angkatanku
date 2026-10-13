@@ -4,7 +4,7 @@ import {
   scrypt as scryptCallback,
   timingSafeEqual,
 } from "node:crypto";
-import type { Store, RecordData } from "./store";
+import type { Store, RecordData } from "./store.js";
 const scrypt = (password: string, salt: string) =>
   new Promise<Buffer>((resolve, reject) =>
     scryptCallback(

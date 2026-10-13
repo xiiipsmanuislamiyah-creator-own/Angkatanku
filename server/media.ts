@@ -1,8 +1,8 @@
 import { fileTypeFromBuffer } from "file-type";
 import sharp from "sharp";
 import { v2 as cloudinary } from "cloudinary";
-import { randomToken, requireThat, HttpError } from "./security";
-import type { RecordData } from "./store";
+import { randomToken, requireThat, HttpError } from "./security.js";
+import type { RecordData } from "./store.js";
 export interface MediaProvider {
   authorize?(asset: RecordData): Promise<{url:string;fields:Record<string,string>}>;
   inspect?(asset: RecordData): Promise<RecordData>;

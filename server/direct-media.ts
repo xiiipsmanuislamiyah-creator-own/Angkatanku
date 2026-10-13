@@ -1,7 +1,7 @@
-import type { Domain } from "./domain";
-import type { MediaProvider } from "./media";
-import { validateFile } from "./media";
-import { requireThat, rateLimit, randomToken, validId } from "./security";
+import type { Domain } from "./domain.js";
+import type { MediaProvider } from "./media.js";
+import { validateFile } from "./media.js";
+import { requireThat, rateLimit, randomToken, validId } from "./security.js";
 export const directUploads = () =>
   process.env.VERCEL === "1" || process.env.DIRECT_MEDIA_UPLOAD === "true";
 export async function boundedDownload(response: Response, max: number) {

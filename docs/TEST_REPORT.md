@@ -5,14 +5,14 @@
 | Pemeriksaan | Hasil | Bukti/cakupan |
 |---|---|---|
 | `npm run lint` | PASS | TypeScript noEmit, exit 0 |
-| `npm test` | PASS 47/47 | API Express nyata, store transaksional fixture, provider dummy; termasuk native handler Vercel tanpa env |
+| `npm test` | PASS 48/48 | API Express nyata, store transaksional fixture, provider dummy; termasuk native handler Vercel tanpa env |
 | `npm run test:rules` | PASS 4/4 | Emulator resmi Java 21, project demo-angkatanku |
 | `npm run build` | PASS | Vite 6.4.3, 2.196 modul; frontend dan server terpisah |
-| `npm run test:e2e` | PASS 20/20 | Chromium, Playwright 1.56.1, build aktual; 0 skipped/flaky, sekitar 49 detik pada pengulangan penuh |
+| `npm run test:e2e` | PASS 20/20 | Chromium, Playwright 1.56.1, build aktual; 0 skipped/flaky, sekitar 70 detik pada pengulangan penuh |
 | Runtime produksi HTTPS lokal | PASS 1/1 | Build server asli, cookie Secure, emulator/rules aktual, Chromium |
 | `npm audit --json` | PASS, 0 advisory | Seluruh dependency/dev pada lockfile saat pemeriksaan |
 
-Total **72 tes**, bukan 72 tes provider produksi. 216 percobaan akses Firestore termasuk dalam empat tes emulator, bukan tambahan jumlah suite. Pemeriksaan visual responsif diulang untuk menunggu animasi selesai sebelum screenshot.
+Total **73 tes**, bukan 73 tes provider produksi. 216 percobaan akses Firestore termasuk dalam empat tes emulator, bukan tambahan jumlah suite. Pemeriksaan visual responsif diulang untuk menunggu animasi selesai sebelum screenshot.
 
 ## Autentikasi, ACL, data dan keamanan
 
@@ -53,3 +53,5 @@ Runtime HTTPS lokal membuktikan cookie __Host-angkatan_session Secure/HttpOnly/S
 Belum diverifikasi: Cloudinary upload/delivery/delete nyata dan file besar di Vercel; Gemini generation nyata; key rotation; migrasi/rules produksi; kamera fisik; Safari/Firefox/perangkat nyata; login embedded AI Studio; aksesibilitas menyeluruh; beban/soak; budget/retensi/recovery produksi. Data/browser/provider dummy tidak membuktikan bagian tersebut. Status preview nyata dicatat terpisah dalam DEPLOYMENT_STATUS.md.
 
 Scan terakhir terhadap 61 nilai rahasia dikenal pada 192 file source/docs/build: 0 file cocok. Ini tidak mencakup seluruh Git history atau seluruh pola secret yang tidak dikenal. Visual QA juga menemukan scroll awal Nusa menggeser seluruh halaman; autoscroll kini hanya di dalam viewport percakapan, dengan regresi posisi scroll awal.
+
+Preview Vercel pertama berhasil build namun runtime 500 dengan ERR_MODULE_NOT_FOUND pada import server/runtime. Semua import relatif backend/API diberi ekstensi .js; tes tambahan mengompilasi transitive imports memakai NodeNext dan memuatnya lewat proses Node asli tanpa tsx. 48/48 unit/API dan TypeScript/build lulus setelah perbaikan. Total menjadi 73 tes; verifikasi preview ulang dicatat di DEPLOYMENT_STATUS.md.

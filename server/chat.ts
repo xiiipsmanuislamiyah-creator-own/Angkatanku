@@ -1,6 +1,6 @@
-import type { Domain } from "./domain";
-import type { Store, RecordData } from "./store";
-import { authenticated } from "./auth";
+import type { Domain } from "./domain.js";
+import type { Store, RecordData } from "./store.js";
+import { authenticated } from "./auth.js";
 import {
   requireThat,
   validId,
@@ -10,7 +10,7 @@ import {
   can,
   fresh,
   type Principal,
-} from "./security";
+} from "./security.js";
 
 export const GLOBAL_ROOMS = [
   { id: "global-students", title: "Siswa & Alumni", kind: "students" },

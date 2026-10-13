@@ -33,3 +33,5 @@
 - Chat menggunakan ID pesan berurutan waktu terbalik untuk query newest-first pada subkoleksi Firestore; pertahankan tes emulator pagination/idempotency/block. Poll dengan revision tidak perlu membaca seluruh history yang belum berubah.
 - Nusa Memory hanya masuk retrieval setelah consent dan persetujuan, mengikuti audience/kelas. Jangan memberi AI akses DM atau kemampuan administrasi.
 - API Vercel harus menerima IncomingMessage/ServerResponse native; konfigurasi yang belum lengkap mengembalikan JSON 503, tanpa fallback akun dummy atau secret.
+
+- Import relatif backend/API menggunakan ekstensi .js yang dituju setelah kompilasi TypeScript. Tes native Node ESM pada tests/vercel.test.ts wajib dipertahankan; tsx/esbuild lokal dapat menyembunyikan ERR_MODULE_NOT_FOUND di Vercel.

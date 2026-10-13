@@ -4,10 +4,10 @@ import {
   requireThat,
   validId,
   type Principal,
-} from "./security";
-import type { RecordData } from "./store";
-import {scheduleIssue} from '../shared/schedule';
-import {STORY_STYLES, STORY_FONTS, STORY_ALIGNS, POST_RATIOS} from '../shared/social';
+} from "./security.js";
+import type { RecordData } from "./store.js";
+import {scheduleIssue} from '../shared/schedule.js';
+import {STORY_STYLES, STORY_FONTS, STORY_ALIGNS, POST_RATIOS} from '../shared/social.js';
 export const COLLECTIONS = new Set(
   "students teachers users gallery albums personal_albums stories posts messages schedules achievements announcements config system_moderation app_ratings".split(
     " ",

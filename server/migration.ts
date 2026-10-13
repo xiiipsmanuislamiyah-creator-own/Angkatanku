@@ -9,8 +9,8 @@ import {
   digest,
   audit,
   randomToken,
-} from "./security";
-import type { Store, RecordData } from "./store";
+} from "./security.js";
+import type { Store, RecordData } from "./store.js";
 export type MigrationAccount = {
   uid: string;
   username: string;

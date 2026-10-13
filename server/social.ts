@@ -1,5 +1,5 @@
-import type { Domain } from "./domain";
-import { authenticated, csrfCheck } from "./auth";
+import type { Domain } from "./domain.js";
+import { authenticated, csrfCheck } from "./auth.js";
 import {
   digest,
   randomToken,
@@ -7,9 +7,9 @@ import {
   validId,
   rateLimit,
   type Principal,
-} from "./security";
-import { visible, project } from "./policy";
-import type { RecordData } from "./store";
+} from "./security.js";
+import { visible, project } from "./policy.js";
+import type { RecordData } from "./store.js";
 const guestCookie = () =>
   process.env.NODE_ENV === "production"
     ? "__Host-angkatan_visitor"

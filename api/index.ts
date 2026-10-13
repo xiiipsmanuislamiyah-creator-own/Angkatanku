@@ -1,5 +1,5 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { createRuntimeApp } from "../server/runtime";
+import { createRuntimeApp } from "../server/runtime.js";
 let application: ReturnType<typeof createRuntimeApp>;
 export default function handler(req: IncomingMessage, res: ServerResponse) {
   try {

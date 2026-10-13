@@ -1,6 +1,6 @@
-import { requireThat, audit, randomToken } from "./security";
-import type { Store, RecordData } from "./store";
-import type { MediaProvider } from "./media";
+import { requireThat, audit, randomToken } from "./security.js";
+import type { Store, RecordData } from "./store.js";
+import type { MediaProvider } from "./media.js";
 export const canCollect = (a: RecordData, now = Date.now()) =>
   !a.deleted &&
   (!a.signatureUntil || a.signatureUntil + 60000 < now) &&

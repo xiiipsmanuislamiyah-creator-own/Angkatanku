@@ -1,5 +1,5 @@
 import type { Request, Response } from "express";
-import type { Store } from "./store";
+import type { Store } from "./store.js";
 import {
   digest,
   randomToken,
@@ -9,7 +9,7 @@ import {
   rateLimit,
   audit,
   type Principal,
-} from "./security";
+} from "./security.js";
 export const MAX_SESSION_MS = 7 * 86400_000,
   IDLE_SESSION_MS = 12 * 3600_000;
 export const cookieName = () =>

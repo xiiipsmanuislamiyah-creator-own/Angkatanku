@@ -55,7 +55,7 @@ Backup terenkripsi dan rollback dengan pemeriksaan konflik telah diuji pada emul
 | Gate | Hasil |
 |---|---|
 | TypeScript | Lulus |
-| Unit/API/kompatibilitas/migrasi/media | 47/47 lulus |
+| Unit/API/kompatibilitas/migrasi/media | 48/48 lulus |
 | Firestore emulator | 4/4 lulus, termasuk 216 penolakan request langsung |
 | Build frontend/server | Lulus |
 | Browser Chromium | 20/20 lulus, 0 flaky/skipped |
@@ -63,7 +63,7 @@ Backup terenkripsi dan rollback dengan pemeriksaan konflik telah diuji pada emul
 | Dependency audit | 0 advisory pada lockfile yang diperiksa |
 | Scan 61 nilai rahasia dikenal | 0 file cocok pada 192 file source/docs/build yang diperiksa |
 
-Tes mencakup login salah/benar, QR/manual, session/logout/revoke, brute force, role escalation, akses lintas profil, guest private access, direct Firestore/API, forged localStorage, file validation, ownership/audience, DM reports, AI quotas, migrasi/rollback dan regresi layar existing. Total kini 72 tes. Tambahan tes menjalankan entrypoint build produksi melalui HTTPS lokal dengan emulator/rules aktual untuk membuktikan cookie aman, login, write dan logout pada runtime asli. Kartu PNG unduhan didekode kembali secara otomatis. Mobile/desktop diuji pada lebar 320/360/390/480/768/1024/1440 px.
+Tes mencakup login salah/benar, QR/manual, session/logout/revoke, brute force, role escalation, akses lintas profil, guest private access, direct Firestore/API, forged localStorage, file validation, ownership/audience, DM reports, AI quotas, migrasi/rollback dan regresi layar existing. Total kini 73 tes. Tambahan tes menjalankan entrypoint build produksi melalui HTTPS lokal dengan emulator/rules aktual untuk membuktikan cookie aman, login, write dan logout pada runtime asli. Kartu PNG unduhan didekode kembali secara otomatis. Mobile/desktop diuji pada lebar 320/360/390/480/768/1024/1440 px.
 
 Lihat [TEST_REPORT.md](TEST_REPORT.md) untuk cakupan, kegagalan yang diperbaiki dan batas bukti. Tidak meminta pemilik menjalankan tes manual.
 

@@ -2,7 +2,7 @@
 
 Portal React/TypeScript yang dipertahankan dari source asli. V2 mempertahankan fondasi Tahap 1: autentikasi username/password dan QR berbasis server, kontrol akses, audit serta perlindungan data pada Express + Firestore. Supabase tidak diperlukan.
 
-**Status:** fitur V2 dan 72 tes lokal tersedia di branch codex/angkatanku-security-v2; cutover produksi belum dilakukan. Lihat docs/DEPLOYMENT_STATUS.md untuk hasil preview terbaru. Jangan memasang firestore.rules sendirian ke aplikasi lama.
+**Status:** fitur V2 dan 73 tes lokal tersedia di branch codex/angkatanku-security-v2; cutover produksi belum dilakukan. Lihat docs/DEPLOYMENT_STATUS.md untuk hasil preview terbaru. Jangan memasang firestore.rules sendirian ke aplikasi lama.
 
 ## Pengembangan dan pengujian
 

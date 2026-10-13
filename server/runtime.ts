@@ -1,7 +1,7 @@
 import { GoogleGenAI } from "@google/genai";
-import { createApp } from "./app";
-import { firebaseStore } from "./store";
-import { cloudinaryProvider } from "./media";
+import { createApp } from "./app.js";
+import { firebaseStore } from "./store.js";
+import { cloudinaryProvider } from "./media.js";
 export function createRuntimeApp() {
   const origins = (
     process.env.APP_ORIGINS ||

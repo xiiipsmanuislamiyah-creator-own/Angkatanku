@@ -1,6 +1,6 @@
 import type { Express, Request, Response, RequestHandler } from "express";
-import type { Principal } from "./security";
-import type { Store, RecordData } from "./store";
+import type { Principal } from "./security.js";
+import type { Store, RecordData } from "./store.js";
 
 export interface Domain {
   app: Express;

@@ -1,6 +1,6 @@
-import type { Domain } from "./domain";
-import type { Store, RecordData } from "./store";
-import { authenticated } from "./auth";
+import type { Domain } from "./domain.js";
+import type { Store, RecordData } from "./store.js";
+import { authenticated } from "./auth.js";
 import {
   can,
   fresh,
@@ -9,8 +9,8 @@ import {
   randomToken,
   rateLimit,
   type Principal,
-} from "./security";
-import { visible, project } from "./policy";
+} from "./security.js";
+import { visible, project } from "./policy.js";
 
 export function memoryVisible(d: RecordData, p: Principal | null) {
   return (

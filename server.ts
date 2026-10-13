@@ -1,7 +1,7 @@
 import "dotenv/config";
 import express from "express";
 import path from "node:path";
-import {createRuntimeApp} from "./server/runtime";
+import {createRuntimeApp} from "./server/runtime.js";
 async function start() {
   const app = createRuntimeApp();
   if (process.env.NODE_ENV === "production") {

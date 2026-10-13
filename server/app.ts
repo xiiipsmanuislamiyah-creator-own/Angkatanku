@@ -6,7 +6,7 @@ import express, {
 import {isIP} from "node:net";
 import multer from "multer";
 import { Readable } from "node:stream";
-import type { Store, RecordData } from "./store";
+import type { Store, RecordData } from "./store.js";
 import {
   HttpError,
   requireThat,
@@ -23,7 +23,7 @@ import {
   audit,
   PERMISSIONS,
   type Principal,
-} from "./security";
+} from "./security.js";
 import {
   principal,
   authenticated,
@@ -34,7 +34,7 @@ import {
   sessionCsrf,
   clearCookie,
   IDLE_SESSION_MS,
-} from "./auth";
+} from "./auth.js";
 import {
   COLLECTIONS,
   CONTENT,
@@ -44,12 +44,12 @@ import {
   moderationPermission,
   externalUrls,
   resourceOwner,
-} from "./policy";
-import { assetIds, validateFile, type MediaProvider } from "./media";
-import { installChat, ensureUnblocked } from './chat';
-import { installKnowledge, retrieveKnowledge } from './knowledge';
-import { installSocial } from './social';
-import {installDirectMedia,directUploads} from './direct-media';
+} from "./policy.js";
+import { assetIds, validateFile, type MediaProvider } from "./media.js";
+import { installChat, ensureUnblocked } from './chat.js';
+import { installKnowledge, retrieveKnowledge } from './knowledge.js';
+import { installSocial } from './social.js';
+import {installDirectMedia,directUploads} from './direct-media.js';
 export type Options = {
   store: Store;
   origins: string[];

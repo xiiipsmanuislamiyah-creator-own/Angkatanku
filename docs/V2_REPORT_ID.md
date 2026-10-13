@@ -8,7 +8,7 @@
 | 2 — Komunitas | Feed/Story/album, dua chat global, DM privat/block/mute/moderasi; PASS API/emulator/browser | Provider nyata belum diverifikasi |
 | 3 — Nusa | Memory consent/review/version/correction, retrieval berizin, respons/sumber/retry/cancel; PASS dummy | Gemini nyata belum diuji; game/tools baru ditunda PRD |
 | 4 — UI/UX | Home/navigasi/direktori/profil/komunitas, mobile, lazy loading; PASS Chromium 320–1440 px | Preview sebelum peluncuran |
-| 5 — Pengujian | 72 tes, TypeScript/build, audit dependency, sampel performa; PASS dalam cakupan lokal | Perangkat/provider/load/soak/produksi belum lengkap |
+| 5 — Pengujian | 73 tes, TypeScript/build, audit dependency, sampel performa; PASS dalam cakupan lokal | Perangkat/provider/load/soak/produksi belum lengkap |
 
 ## Temuan dan perbaikan
 
@@ -22,7 +22,7 @@ Lazy loading menurunkan JS awal sekitar 59–61% pada sampel lokal, bukan klaim 
 
 CHANGED_FILES.md memuat daftar file. Modul baru utama: server/chat.ts, social.ts, knowledge.ts, direct-media.ts, runtime.ts, api/index.ts, shared/social.ts/schedule.ts, ChatHub/Albums, Composer/MemoryPanel, Modal, community.css dan tes komunitas/Vercel.
 
-Hasil nyata: 47 unit/API + 4 emulator + 20 browser + 1 runtime HTTPS lokal = **72 PASS**. 216 request langsung Firestore ditolak, termasuk dalam empat tes emulator. TypeScript/build dan npm audit lulus. Provider browser/API adalah dummy. Detail dan batas bukti pada TEST_REPORT.md; performa pada PERFORMANCE.md; deployment pada DEPLOYMENT_STATUS.md.
+Hasil nyata: 48 unit/API + 4 emulator + 20 browser + 1 runtime HTTPS lokal = **73 PASS**. 216 request langsung Firestore ditolak, termasuk dalam empat tes emulator. TypeScript/build dan npm audit lulus. Provider browser/API adalah dummy. Detail dan batas bukti pada TEST_REPORT.md; performa pada PERFORMANCE.md; deployment pada DEPLOYMENT_STATUS.md.
 
 ## Risiko dan kesiapan
 
