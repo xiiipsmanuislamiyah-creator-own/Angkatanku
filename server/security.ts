@@ -89,6 +89,8 @@ export const PERMISSIONS = [
   "announcements.manage",
   "config.manage",
   "audit.read",
+  "memory.review",
+  "identity.publish",
 ] as const;
 export type Role = "owner" | "admin" | "member";
 export interface Principal {

@@ -17,16 +17,21 @@ export const LoginWelcomeModal: React.FC<LoginWelcomeModalProps> = ({ onNavigate
       const sFlag = sessionStorage.getItem('just_logged_in_greeting');
       const lFlag = localStorage.getItem('pending_welcome_greeting');
       if ((sFlag === 'true' || lFlag === 'true') && user) {
+        // Consume once when shown, so a reload or profile refresh cannot reopen it.
+        sessionStorage.removeItem('just_logged_in_greeting');
+        localStorage.removeItem('pending_welcome_greeting');
         setIsOpen(true);
       }
     };
 
     if (user) {
       checkGreeting();
+    } else {
+      setIsOpen(false);
     }
 
     const handleCustomLoginEvent = () => {
-      setTimeout(checkGreeting, 350);
+      checkGreeting();
     };
 
     window.addEventListener('app_user_logged_in', handleCustomLoginEvent);

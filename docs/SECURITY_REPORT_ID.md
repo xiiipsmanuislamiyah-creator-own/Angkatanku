@@ -1,8 +1,8 @@
 # Laporan akhir implementasi Tahap 1 — AngkatanKU
 
-12 Oktober 2026 · Branch codex/angkatanku-security-v2.
+Diperbarui 13 Oktober 2026 · Branch codex/angkatanku-security-v2.
 
-**Implementasi dan pengujian lokal selesai. Produksi belum diubah. Kriteria keamanan menyeluruh belum terpenuhi karena cutover, rotasi kredensial dan verifikasi provider/hosting masih terbuka.** Tidak ada klaim aman 100%.
+**Implementasi Tahap 1 dan V2 serta pengujian lokal tersedia. Cutover produksi belum dilakukan. Kriteria keamanan menyeluruh belum terpenuhi karena cutover, rotasi kredensial dan verifikasi provider/hosting masih terbuka.** Tidak ada klaim aman 100%.
 
 ## 1. Kerentanan yang ditemukan
 
@@ -34,7 +34,7 @@ Daftar lengkap per file dan perbandingan terhadap ZIP ada pada [CHANGED_FILES.md
 - Operasional/tes: scripts/migrate-security.ts, media-gc.ts, test-emulator.ts, scripts build/start, tests API/emulator/browser.
 - Dokumen: AGENTS.md, PLAN.md, security_spec.md, README dan docs/.
 
-Source asli dipertahankan sebagai dasar; tidak membangun ulang UI. Penggantian adapter data diperlukan karena seluruh akses Firestore klien ditutup. Kredensial source tidak disertakan pada repo hasil.
+Source asli dipertahankan. Instruksi lanjutan owner mengizinkan pembaruan UI V2; kartu/scanner/foto/landing tetap dikenali. Penggantian adapter data diperlukan karena seluruh akses Firestore klien ditutup. Kredensial source tidak disertakan pada repo hasil.
 
 ## 3. Perbaikan yang berhasil
 
@@ -44,7 +44,7 @@ Review implementasi juga menemukan dan memperbaiki perubahan jenis profil target
 
 Pusat kontrol ditambahkan pada panel existing untuk akun/permission/lingkup, suspend/ban, reset, konfigurasi, audience/hidden/delete, laporan dan audit. Tindakan berisiko memerlukan konfirmasi password dan dicatat. Siswa/guru tetap jenis profil, tanpa kewajiban email/OTP/nomor telepon. Tidak ada signup publik atau backdoor DM.
 
-Upload/delete dilindungi, media baru memakai authenticated delivery lewat server, dan AI mendapat batas input/kuota/konteks tanpa DM. Konfigurasi Global Chat/Story/Feed hanya disiapkan sesuai fondasi Tahap 1; fitur sosial penuh belum dibangun.
+Upload/delete dilindungi, media baru memakai authenticated delivery lewat server, dan AI mendapat batas input/kuota/konteks tanpa DM. V2 kemudian melengkapi Feed/Story/album, dua chat global dan DM berizin, serta Nusa Memory; lihat V2_REPORT_ID.md.
 
 Migrasi mempertahankan UID dan ID profil. Pemetaan read-only menemukan 74 akun Auth: 56 sesuai source (36 siswa/20 guru), 39 profil sudah ada, 17 profil direncanakan dibuat; 18 akun Auth lainnya tidak diubah. Dua QR CDN berhasil dibaca. Username kartu owner cocok unik, tetapi password berbeda dari ZIP; contoh kartu guru cocok. Password QR/source yang terekspos tidak akan diaktifkan sebagai kredensial baru. Desain dan parser kartu tetap, sementara kartu privat diterbitkan ulang setelah reset.
 
@@ -55,15 +55,15 @@ Backup terenkripsi dan rollback dengan pemeriksaan konflik telah diuji pada emul
 | Gate | Hasil |
 |---|---|
 | TypeScript | Lulus |
-| Unit/API/kompatibilitas/migrasi/media | 36/36 lulus |
-| Firestore emulator | 3/3 lulus, termasuk 108 penolakan request langsung |
+| Unit/API/kompatibilitas/migrasi/media | 47/47 lulus |
+| Firestore emulator | 4/4 lulus, termasuk 216 penolakan request langsung |
 | Build frontend/server | Lulus |
-| Browser Chromium | 10/10 lulus, 0 flaky/skipped |
+| Browser Chromium | 20/20 lulus, 0 flaky/skipped |
 | Entrypoint produksi via HTTPS lokal + emulator | 1/1 lulus |
 | Dependency audit | 0 advisory pada lockfile yang diperiksa |
-| Scan 60 nilai rahasia dikenal | 0 kecocokan dalam source/build yang diperiksa |
+| Scan 61 nilai rahasia dikenal | 0 file cocok pada 192 file source/docs/build yang diperiksa |
 
-Tes mencakup login salah/benar, QR/manual, session/logout/revoke, brute force, role escalation, akses lintas profil, guest private access, direct Firestore/API, forged localStorage, file validation, ownership/audience, DM reports, AI quotas, migrasi/rollback dan regresi layar existing. Total kini 50 tes. Tambahan tes menjalankan entrypoint build produksi melalui HTTPS lokal dengan emulator/rules aktual untuk membuktikan cookie aman, login, write dan logout pada runtime asli. Kartu PNG unduhan didekode kembali secara otomatis. Mobile/desktop diuji pada lebar 320/390/768/1280 px.
+Tes mencakup login salah/benar, QR/manual, session/logout/revoke, brute force, role escalation, akses lintas profil, guest private access, direct Firestore/API, forged localStorage, file validation, ownership/audience, DM reports, AI quotas, migrasi/rollback dan regresi layar existing. Total kini 72 tes. Tambahan tes menjalankan entrypoint build produksi melalui HTTPS lokal dengan emulator/rules aktual untuk membuktikan cookie aman, login, write dan logout pada runtime asli. Kartu PNG unduhan didekode kembali secara otomatis. Mobile/desktop diuji pada lebar 320/360/390/480/768/1024/1440 px.
 
 Lihat [TEST_REPORT.md](TEST_REPORT.md) untuk cakupan, kegagalan yang diperbaiki dan batas bukti. Tidak meminta pemilik menjalankan tes manual.
 
@@ -71,14 +71,12 @@ Lihat [TEST_REPORT.md](TEST_REPORT.md) untuk cakupan, kegagalan yang diperbaiki 
 
 **Produksi masih berisiko:** kontrol baru belum terpasang dan secret/kartu publik lama belum dicabut. Menghapus nilai dari kode terbaru tidak menghapus Git history, link publik, cache atau salinan yang sudah beredar. Public Maps key yang ditemukan pada checkpoint sebelumnya sudah dihapus dari source terbaru, tetapi tetap perlu restriction/rotasi. Pemindaian nilai dikenal bukan pemindaian seluruh jenis secret atau seluruh history.
 
-Akses Vercel menolak pembacaan target project dengan 403, termasuk team scope. Service account Firebase dapat membaca data untuk audit. Diagnosis berikutnya menunjukkan Cloud Run API belum aktif (SERVICE_DISABLED), dan pemeriksaan IAM terpisah mengonfirmasi tidak adanya izin aktivasi/deployment yang diuji. Lihat [DEPLOYMENT_STATUS.md](DEPLOYMENT_STATUS.md). Hak deployment aktual belum tersedia. Tidak menjalankan deploy/rules terpisah yang dapat memutus aplikasi lama.
+Token Vercel baru berhasil mengakses project (200); hambatan token lama tidak berlaku lagi. Cloud Run bukan prasyarat Vercel. Service account Firebase bisa membaca data audit tetapi permintaan izin rotasi key ditolak 403. Lihat DEPLOYMENT_STATUS.md. Rules/migrasi belum dipasang terpisah karena dapat memutus aplikasi lama.
 
 Cloudinary upload/private delivery/delete nyata dan Gemini generation nyata belum diuji. Provider pada tes bersifat dummy. URL CDN lama tetap publik meskipun audience metadata berubah. Inventaris seluruh kartu/media belum diverifikasi; hanya dua contoh diperiksa. Migrasi produksi belum berjalan. Kamera fisik, Safari/Firefox, perangkat nyata, beban besar, aksesibilitas menyeluruh, ingress/IAM/budget/retensi dan login embedded AI Studio belum diverifikasi.
 
 Audit log/backup terlindungi terhadap API klien, tetapi admin infrastruktur yang mempunyai IAM tetap berada dalam batas kepercayaan. Penghapusan/retensi terjadwal, disaster recovery produksi dan batas volumetrik perlu dipasang pada lingkungan deployment. Tidak ada jaminan bahwa seluruh kerentanan tinggi sudah hilang dari layanan live.
 
-## 6. Kesiapan Tahap 2
+## 6. Kesiapan dan instruksi lanjutan
 
-Fondasi kode Tahap 1 siap ditinjau dan diuji di staging; **belum siap dinyatakan selesai di produksi atau melanjutkan peluncuran Tahap 2**. Gate berikutnya: akses deployment proyek yang benar → konfigurasi/rotasi secret → tes provider staging → backup dan migrasi terkontrol → cutover backend/frontend/rules → tes otomatis HTTPS.
-
-Satu tindakan pemilik yang saat ini diperlukan adalah menyediakan identitas deployment baru yang berizin (bukan memperluas key lama yang terekspos) ke layanan AngkatanKU (AI Studio/Cloud Run atau hosting yang dipilih) melalui integrasi atau secret environment privat. Token Vercel yang ada belum mempunyai akses ke project target. Tidak perlu token Supabase, data sensitif tambahan, atau pengujian manual dari pemilik. Runbook teknis sudah disiapkan agar pelaksanaannya dapat dilanjutkan oleh agent setelah akses tersebut tersedia.
+Owner telah mengizinkan Tahap 2–5; implementasi V2/tes dijelaskan pada V2_REPORT_ID.md. Source siap ditinjau melalui preview; rilis fungsional belum memenuhi gate produksi. Kredensial pengganti privat diperlukan sebelum tes provider, backup/migrasi, pencabutan akses lama dan cutover bersama. Akses Vercel sudah tersedia; tidak perlu Supabase atau tes manual pemilik.

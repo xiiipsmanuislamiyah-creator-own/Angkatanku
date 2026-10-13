@@ -29,6 +29,7 @@ import {
   ArrowLeft,
   Home
 } from 'lucide-react';
+import {scheduleIssue} from '../../shared/schedule';
 import { useAuth } from '../contexts/AuthContext';
 import { db } from '../lib/firebase';
 import { collection, getDocs, addDoc, updateDoc, doc, query } from '../lib/data';
@@ -922,7 +923,7 @@ export function getSubjectMeta(name: string, isBreak?: boolean) {
 }
 
 export default function JadwalPelajaran({ onNavigate }: { onNavigate?: (tab: string) => void }) {
-  const { isAdmin } = useAuth();
+  const { isAdmin, user } = useAuth();
   
   const [classesData, setClassesData] = useState<ClassSchedule[]>([]);
   const [loading, setLoading] = useState(true);
@@ -931,23 +932,23 @@ export default function JadwalPelajaran({ onNavigate }: { onNavigate?: (tab: str
 
   const getTodayIndo = () => {
     const dayMap = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
-    const today = dayMap[new Date().getDay()];
+    const today = new Date().toLocaleDateString('id-ID',{weekday:'long',timeZone:'Asia/Jakarta'});
     return DEFAULT_DAYS.includes(today) ? today : 'Senin';
   };
 
-  const [activeClass, setActiveClass] = useState<string>('XII IPS 1');
+  const [activeClass, setActiveClass] = useState<string>(user?.classRooms?.[0]?'XII '+user.classRooms[0].replace(/^XII /,''):'XII IPS 1');
   const [activeDay, setActiveDay] = useState<string>(getTodayIndo());
   const [viewMode, setViewMode] = useState<'daily' | 'weekly'>('daily');
   const [currentTime, setCurrentTime] = useState<Date>(new Date());
 
-  // Personal notes stored in localStorage per subject
+  // Per-account notes are cleared with the session; never reuse unscoped legacy notes.
   const [userNotes, setUserNotes] = useState<Record<string, string>>({});
   const [selectedBlockDetail, setSelectedBlockDetail] = useState<MergedScheduleBlock | null>(null);
   const [activeNoteText, setActiveNoteText] = useState('');
 
   useEffect(() => {
     try {
-      const saved = localStorage.getItem('user_schedule_notes');
+      const saved = sessionStorage.getItem('angkatan-draft:'+user?.uid+':schedule-notes');
       if (saved) {
         setUserNotes(JSON.parse(saved));
       }
@@ -959,7 +960,7 @@ export default function JadwalPelajaran({ onNavigate }: { onNavigate?: (tab: str
   const saveNoteForSubject = (key: string, text: string) => {
     const updated = { ...userNotes, [key]: text };
     setUserNotes(updated);
-    localStorage.setItem('user_schedule_notes', JSON.stringify(updated));
+    sessionStorage.setItem('angkatan-draft:'+user?.uid+':schedule-notes', JSON.stringify(updated));
   };
 
   useEffect(() => {
@@ -1209,6 +1210,7 @@ export default function JadwalPelajaran({ onNavigate }: { onNavigate?: (tab: str
         return sch;
       });
 
+      const issue=scheduleIssue(updatedSchedules);if(issue){alert(issue);return;}
       if (selectedClassSchedule.id) {
         await updateDoc(doc(db, 'schedules', selectedClassSchedule.id), {
           schedules: updatedSchedules
@@ -1224,7 +1226,7 @@ export default function JadwalPelajaran({ onNavigate }: { onNavigate?: (tab: str
       fetchSchedules();
     } catch (err: any) {
       console.warn('Gagal menyimpan jadwal:', err?.message || err);
-      alert('Gagal menyimpan jadwal.');
+      alert(err.message||'Gagal menyimpan jadwal.');
     }
   };
 
@@ -1241,6 +1243,7 @@ export default function JadwalPelajaran({ onNavigate }: { onNavigate?: (tab: str
         return sch;
       });
 
+      const issue=scheduleIssue(updatedSchedules);if(issue){alert(issue);return;}
       if (selectedClassSchedule.id) {
         await updateDoc(doc(db, 'schedules', selectedClassSchedule.id), {
           schedules: updatedSchedules

@@ -3,6 +3,7 @@ import type { Store, RecordData } from "./store";
 import type { MediaProvider } from "./media";
 export const canCollect = (a: RecordData, now = Date.now()) =>
   !a.deleted &&
+  (!a.signatureUntil || a.signatureUntil + 60000 < now) &&
   !(a.parents || []).length &&
   (a.pendingDelete || a.deleting || a.createdAt < now - 86400000);
 export async function collectMedia(

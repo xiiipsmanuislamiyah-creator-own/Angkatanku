@@ -96,3 +96,70 @@ Daftar ini membandingkan file runtime, konfigurasi, tes dan dokumentasi yang dis
 File kredensial siswa/guru dikeluarkan dari runtime dan diganti direktori profil tanpa password. Skrip patch ad-hoc, arsip HTML/ZIP, snapshot, dan bahan audit privat dari ZIP tidak diikutsertakan sebagai runtime/deploy; source aslinya tetap menjadi bahan audit. Tidak ada penghapusan data produksi.
 
 Penjelasan kelompok perubahan dan risiko tersedia dalam SECURITY_REPORT_ID.md. Manifest akun, secret, QR login nyata, backup, node_modules, dist dan hasil browser tidak dicommit.
+
+## Tambahan/perubahan V2 terhadap checkpoint Tahap 1
+
+| File | Status pada V2 |
+|---|---|
+| `.env.example` | Diubah |
+| `AGENTS.md` | Diubah |
+| `PLAN.md` | Diubah |
+| `README.md` | Diubah |
+| `api/index.ts` | Baru |
+| `docs/DEPLOYMENT_STATUS.md` | Diubah |
+| `docs/DEPLOYMENT_VERCEL.md` | Baru |
+| `docs/PERFORMANCE.md` | Baru |
+| `docs/SECURITY_REPORT_ID.md` | Diubah |
+| `docs/TEST_REPORT.md` | Diubah |
+| `docs/V2_REPORT_ID.md` | Baru |
+| `scripts/measure-ui.ts` | Baru |
+| `security_spec.md` | Diubah |
+| `server.ts` | Diubah |
+| `server/app.ts` | Diubah |
+| `server/chat.ts` | Baru |
+| `server/direct-media.ts` | Baru |
+| `server/domain.ts` | Baru |
+| `server/knowledge.ts` | Baru |
+| `server/media-gc.ts` | Diubah |
+| `server/media.ts` | Diubah |
+| `server/policy.ts` | Diubah |
+| `server/runtime.ts` | Baru |
+| `server/security.ts` | Diubah |
+| `server/social.ts` | Baru |
+| `server/store.ts` | Diubah |
+| `shared/schedule.ts` | Baru |
+| `shared/social.ts` | Baru |
+| `src/App.tsx` | Diubah |
+| `src/components/CinematicRevealIntro.tsx` | Diubah |
+| `src/components/Footer.tsx` | Diubah |
+| `src/components/LoginWelcomeModal.tsx` | Diubah |
+| `src/components/MediaCarousel.tsx` | Diubah |
+| `src/components/Navbar.tsx` | Diubah |
+| `src/components/SecurityControlCenter.tsx` | Diubah |
+| `src/components/StoryRings.tsx` | Diubah |
+| `src/components/ui/Modal.tsx` | Baru |
+| `src/features/knowledge/MemoryPanel.tsx` | Baru |
+| `src/features/social/Composer.tsx` | Baru |
+| `src/lib/api.ts` | Diubah |
+| `src/lib/cloudinary.ts` | Diubah |
+| `src/lib/community.ts` | Baru |
+| `src/main.tsx` | Diubah |
+| `src/pages/Albums.tsx` | Baru |
+| `src/pages/Anggota.tsx` | Diubah |
+| `src/pages/ChatHub.tsx` | Baru |
+| `src/pages/FeedAngkatan.tsx` | Diubah |
+| `src/pages/Guru.tsx` | Diubah |
+| `src/pages/Home.tsx` | Diubah |
+| `src/pages/JadwalPelajaran.tsx` | Diubah |
+| `src/pages/Mading.tsx` | Diubah |
+| `src/pages/NusaAI.tsx` | Diubah |
+| `src/pages/PublicProfile.tsx` | Diubah |
+| `src/styles/community.css` | Baru |
+| `tests/community.test.ts` | Baru |
+| `tests/e2e/community.spec.ts` | Baru |
+| `tests/e2e/security.spec.ts` | Diubah |
+| `tests/emulator/firestore.test.ts` | Diubah |
+| `tests/helpers.ts` | Diubah |
+| `tests/vercel.test.ts` | Baru |
+| `vercel.json` | Baru |
+| `vite.config.ts` | Diubah |

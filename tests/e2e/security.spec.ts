@@ -16,8 +16,8 @@ async function manualLogin(page: Page, username = "member") {
   await page.getByPlaceholder("Masukkan kata sandi...").fill(TEST_PASSWORD);
   await page.getByRole("button", { name: "Otorisasi Masuk" }).click();
   await expect(page).toHaveURL(/\/home/);
-  if (await page.locator("#login-welcome-modal").isVisible())
-    await page.locator("#login-welcome-modal button").first().click();
+  await page.getByRole("button", { name: "Tutup Sambutan" }).click();
+  await expect(page.locator("#login-welcome-overlay")).toHaveCount(0);
 }
 test.beforeEach(async ({ page, request }) => {
   await request.post("/__test/reset");
@@ -47,6 +47,8 @@ test("manual wrong/right login, reload persistence, local role forgery rejected,
   await page.getByPlaceholder("Masukkan kata sandi...").fill(TEST_PASSWORD);
   await page.getByRole("button", { name: "Otorisasi Masuk" }).click();
   await expect(page).toHaveURL(/\/home/);
+  await page.getByRole("button", { name: "Tutup Sambutan" }).click();
+  await expect(page.locator("#login-welcome-overlay")).toHaveCount(0);
   await page.reload();
   await ready(page);
   expect(
@@ -61,8 +63,7 @@ test("manual wrong/right login, reload persistence, local role forgery rejected,
   await expect(page.getByText("Akses Ditolak")).toBeVisible();
   await page.goto("/profile");
   await ready(page);
-  if (await page.locator("#login-welcome-modal").isVisible())
-    await page.locator("#login-welcome-modal button").first().click();
+  await expect(page.locator("#login-welcome-overlay")).toHaveCount(0);
   page.on("dialog", (d) => d.accept());
   await page.getByTitle("Keluar dari akun").click();
   await expect

@@ -1,8 +1,8 @@
-# Spesifikasi keamanan aktual — Tahap 1
+# Spesifikasi keamanan aktual — V2, Tahap 1–5
 
 ## Batas kepercayaan
 
-React menggunakan API Express pada origin yang sama. Server menggunakan Firebase Admin SDK melalui Application Default Credentials (ADC) dan database Firestore yang dipilih eksplisit. Browser tidak mengakses Firestore langsung. Rules menolak semua read/write klien, termasuk token dengan klaim owner palsu.
+React menggunakan API Express pada origin yang sama. Server menggunakan Firebase Admin SDK melalui Application Default Credentials (ADC) atau FIREBASE_SERVICE_ACCOUNT_JSON server-only di Vercel dan database Firestore yang dipilih eksplisit. Browser tidak mengakses Firestore langsung. Rules menolak semua read/write klien, termasuk token dengan klaim owner palsu.
 
 Admin SDK melewati Rules; validasi API dan IAM runtime tetap wajib. Identitas Firebase Auth lama menjadi referensi UID migrasi. Sesi baru diverifikasi server, bukan Firebase ID token atau localStorage.
 
@@ -10,7 +10,7 @@ Admin SDK melewati Rules; validasi API dan IAM runtime tetap wajib. Identitas Fi
 
 | Kemampuan | Owner | Admin | Member | Pengunjung |
 |---|---|---|---|---|
-| Konten publik | Ya | Ya | Ya | Baca saja |
+| Konten publik | Ya | Ya | Ya | Baca; like terbatas cookie/CSRF/kuota |
 | Konten anggota | Ya | Ya | Ya | Tidak |
 | Profil/konten sendiri | Ya | Ya | Ya | Tidak |
 | Moderasi komunitas | Ya | Sesuai izin/lingkup | Tidak | Tidak |
@@ -21,7 +21,7 @@ Admin SDK melewati Rules; validasi API dan IAM runtime tetap wajib. Identitas Fi
 | DM | Hanya peserta | Hanya peserta | Hanya peserta | Tidak |
 | DM dilaporkan | Cuplikan terpilih | reports.review sesuai lingkup | Dapat melapor | Tidak |
 
-Permission: profiles.manage, feed.moderate, story.moderate, globalChat.moderate, reports.review, academic.manage, announcements.manage, config.manage, audit.read. Admin memiliki lingkup sekolah atau daftar kelas. Siswa/guru adalah profileKind, bukan privilege.
+Permission: profiles.manage, feed.moderate, story.moderate, globalChat.moderate, reports.review, academic.manage, announcements.manage, config.manage, audit.read, memory.review, identity.publish. Admin memiliki lingkup sekolah atau daftar kelas. Siswa/guru adalah profileKind, bukan privilege.
 
 Owner hanya dibuat oleh migrasi server dengan tepat satu identitas terpetakan. Tidak ada API pemberian role owner. Perubahan role/izin/status/password menaikkan versi akun dan mencabut sesi lama. Field role dalam profil adalah atribut tampilan legacy, bukan otorisasi.
 
@@ -57,7 +57,7 @@ Rate limit menggunakan transaksi Firestore. TRUSTED_PROXY_CIDRS hanya diisi ingr
 
 Collection/field dibatasi allowlist, tipe/batas input, kepemilikan, identitas resmi yang immutable, dan projection respons. Timestamp/identitas pengirim ditentukan server. Audience public/members/restricted; legacy tanpa audience menjadi members. Hidden hanya terlihat oleh pemilik/moderator. Penulis tidak dapat membatalkan hidden/comment lock yang dipasang moderator. Edit moderator tidak mengambil alih konten legacy tanpa kepemilikan terpetakan, dan jenis profil target tidak diwarisi dari pelaku edit. Identitas penonton menjadi agregat.
 
-DM hanya diquery menurut sender/receiver, tanpa owner override. Laporan menyimpan snapshot pesan pilihan pelapor. Konteks AI terbatas pada jadwal/guru/prestasi yang terlihat, tanpa DM/kredensial atau alat perubahan akun.
+DM lama diquery menurut sender/receiver; DM baru memakai ACL peserta ruang, tanpa owner override. Block diperiksa lagi di transaksi kirim, termasuk jalur legacy. Laporan menyimpan snapshot pesan pilihan pelapor. Konteks AI terbatas pada jadwal/guru/prestasi yang terlihat serta Nusa Memory ber-consent, approved dan sesuai audience/kelas; maksimal 12 sumber, tanpa DM/kredensial atau alat perubahan akun. Usulan Memory tidak langsung masuk retrieval. Review memerlukan izin/lingkup, reauth dan version check; perubahan status dicatat. Koreksi dikirim sebagai laporan transparan.
 
 Upload memerlukan sesi/CSRF/rate limit, signature dan MIME sesuai: JPEG/PNG/WebP <=8 MB dan 24 megapiksel, MP4/WebM <=20 MB. SVG/HTML tersamar/gambar rusak ditolak. Ini bukan pemindaian antivirus menyeluruh. Cloudinary baru bertipe authenticated, diambil server lalu diproxy setelah pemeriksaan audience/parent; signed URL tidak diberikan kepada browser.
 
@@ -65,8 +65,18 @@ Delete memerlukan kepemilikan, pelepasan referensi dan GC server. GC hanya prefi
 
 ## Konfigurasi dan operasional
 
-feedEnabled/storiesEnabled mengendalikan publikasi dan interaksi, bukan menghapus arsip. aiEnabled, uploadLock, readOnly, maintenance dan filter kata diperiksa server. globalChatEnabled/globalChat.moderate/slowMode adalah fondasi Tahap 2, belum layanan chat penuh.
+feedEnabled/storiesEnabled mengendalikan publikasi dan interaksi, bukan menghapus arsip. aiEnabled, uploadLock, readOnly, maintenance dan filter kata diperiksa server. globalChatEnabled/globalChat.moderate/slowMode sekarang mengendalikan dua ruang global. Ruang siswa menolak guru; ruang komunitas menerima anggota aktif. DM peserta tidak memperoleh owner override. Moderasi pin/delete/mute global memerlukan izin/lingkup dan reauth. History 50 per halaman; jendela UI 200 pesan, dengan pagination dan kembali ke pesan terbaru.
 
 Audit hanya aktor/aksi/target/waktu. Backup migrasi AES-256-GCM dengan kunci 32 byte terpisah; rollback membandingkan kondisi terkini agar tidak menimpa perubahan pengguna. Produksi belum memakai kontrol baru ini.
 
 Rujukan: [Firestore server dan IAM](https://firebase.google.com/docs/firestore/client/libraries), [rules per database](https://firebase.google.com/docs/rules/manage-deploy), [Cloudinary access control](https://cloudinary.com/documentation/control_access_to_media).
+
+## Penambahan Vercel/V2
+
+Vercel memakai origin platform yang tetap dari env, bukan Host request, dan IP platform x-vercel-forwarded-for hanya ketika VERCEL=1. Native handler mengembalikan 503 tanpa konfigurasi, tidak mengaktifkan akun dummy. Browser/API same-origin.
+
+Untuk upload di Vercel, server membuat reservation dan signature Cloudinary dengan ID acak, overwrite=false, authenticated dan format terbatas. Browser mengirim file langsung ke provider; completion membaca metadata provider dan isi file di server untuk validasi, sebelum media boleh ditautkan/dibaca. Signature berlaku satu jam; GC menunggu signature kedaluwarsa. Pending/orphan tidak ditampilkan dan eligible GC setelah 24 jam. Ini membatasi publikasi, tetapi bukan jaminan batas ukuran transfer sebelum provider menerima file; perlu budget/perimeter Cloudinary. Signature/kuota terikat akun yang meminta; endpoint completion tetap memeriksa status sesi dalam transaksi.
+
+Kuota tambahan: signed upload 20/akun/jam dan 200/global/hari; global chat 8/20 detik, DM 10/menit; Memory 5/jam. Guest like 60/IP/menit dan 30/visitor/menit dengan maksimum 8 cookie baru/IP/hari. CSP membatasi sink script; CSS Story hanya preset allowlist.
+
+Composer mengirim requestId untuk retry idempotent dan expectedUpdatedAt untuk konflik edit. Query UI legacy dibatasi 500 dokumen; retrieval Memory memeriksa subset terbatas, bukan pencarian semantik seluruh arsip. Retensi, GC terjadwal, notifikasi push dan operasi massal belum dipasang.

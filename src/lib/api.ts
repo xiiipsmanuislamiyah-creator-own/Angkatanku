@@ -23,17 +23,19 @@ export async function api<T = any>(
   path: string,
   body?: unknown,
   method = body === undefined ? "GET" : "POST",
+  options: {signal?: AbortSignal; csrfToken?: string} = {},
 ): Promise<T> {
   const started = revision,
     form = body instanceof FormData;
   const response = await fetch("/api" + path, {
     method,
     credentials: "same-origin",
+    signal: options.signal,
     headers: {
       ...(body === undefined || form
         ? {}
         : { "Content-Type": "application/json" }),
-      ...(session.csrfToken ? { "X-CSRF-Token": session.csrfToken } : {}),
+      ...((options.csrfToken||session.csrfToken) ? { "X-CSRF-Token": options.csrfToken||session.csrfToken! } : {}),
     },
     body: body === undefined ? undefined : form ? body : JSON.stringify(body),
   });

@@ -1,32 +1,27 @@
-# AngkatanKU — Tahap 1
+# AngkatanKU — V2, Tahap 1–5
 
-Diperbarui 12 Oktober 2026. Implementasi dan verifikasi lokal selesai; cutover produksi belum dijalankan. Branch `codex/angkatanku-security-v2`.
+Diperbarui 13 Oktober 2026. Branch `codex/angkatanku-security-v2`, draft PR #1. Master PRD dan instruksi owner mengizinkan Tahap 2–5 serta pembaruan UI; game/tools baru ditunda sesuai Master PRD. Produksi belum dimigrasikan.
 
-## Selesai
+## Implementasi dan verifikasi selesai
 
-- [x] Pulihkan source ZIP dan audit React/TypeScript, auth, rules, API, Cloudinary, Gemini, profil, admin, serta Feed.
-- [x] Server authentication, scrypt, sesi HttpOnly, CSRF, rate limit transaksional, logout/reset/pencabutan sesi.
-- [x] Pertahankan login manual, QR, scanner, desain kartu; tambahkan penerbitan kartu login privat setelah reauth.
-- [x] Owner/admin/member/pengunjung, permission dan lingkup kelas, kepemilikan, audience, perlindungan owner.
-- [x] Pusat kontrol pada admin panel: akun, izin, suspend/ban, konfigurasi, moderasi, laporan terpilih dan audit dengan pagination.
-- [x] Hapus ketergantungan runtime Supabase, password frontend dan fallback tulis palsu.
-- [x] Tutup akses Firestore langsung; amankan media/upload/delete dan AI.
-- [x] Migrasi mempertahankan UID/ID profil, backup AES-GCM, rollback dengan pemeriksaan konflik, GC media dengan tombstone.
-- [x] Pemetaan read-only 56 akun source; 18 akun Auth lain tidak diubah. Periksa dua contoh kartu CDN, bukan seluruh inventaris.
-- [x] TypeScript/build, 36 tes unit/API, 3 emulator, 10 browser, 1 runtime produksi via HTTPS lokal, audit dependency dan pemeriksaan bundle.
-- [x] Dokumentasi hasil, keterbatasan dan runbook cutover. Tidak ada operasi tulis produksi.
+- [x] Source asli dan Master PRD dipelajari; Firebase tetap, tanpa Supabase/database baru.
+- [x] Tahap 1: autentikasi username/QR server, scrypt, sesi HttpOnly, RBAC, reauth, brute-force limit transaksional, audit, deny-all Firestore Rules.
+- [x] Tahap 2: Feed dengan composer/media/audience/identitas resmi, likes/bookmark/reply/report; Story 24 jam; album berurutan; dua chat global dan DM peserta saja, block/mute/read receipt/retry/pagination/pin/moderasi.
+- [x] Tahap 3: Nusa AI dengan respons/sumber/cancel/retry, Memory consent dan review/version/correction; retrieval mengikuti audience. Alat/game lama dipertahankan.
+- [x] Tahap 4: Home/direktori/profil/navigasi akademik dan UI komunitas diperbarui, foto/kartu/scanner/landing sinematik dipertahankan, route lazy loading, reduced motion, mobile 320–1440 px.
+- [x] Tahap 5 lokal: TypeScript/build, 47 unit/API, 4 emulator (216 penolakan request langsung), 20 browser, 1 runtime HTTPS lokal lulus. Provider dummy, bukan bukti produksi.
+- [x] Regresi pagination subkoleksi chat, respons AI, greeting/logout dan reauth moderasi Story diperbaiki dan diuji ulang.
+- [x] Runtime Vercel same-origin serta signed direct upload Cloudinary dengan pemeriksaan server disiapkan; native handler gagal tertutup 503 ketika env belum tersedia.
+- [x] Akses Vercel token baru berhasil membaca project; hambatan token lama 403 sudah tidak berlaku.
+- [x] Sampel performa lokal sebelum/sesudah; audit dependency 0 advisory.
 
-## Gate produksi belum selesai
+## Penyelesaian operasional
 
-- [ ] Akses deployment Node/Cloud Run proyek. Vercel menolak target project (403), termasuk query team; Cloud Run API nonaktif (SERVICE_DISABLED); pemeriksaan IAM terpisah mengonfirmasi tidak adanya izin aktivasi/deployment pada kredensial yang tersedia. Lihat docs/DEPLOYMENT_STATUS.md.
-- [ ] Rotasi secret terekspos, pembatasan key publik, pencabutan akses lama setelah cutover berhasil.
-- [ ] Verifikasi provider Cloudinary upload/authenticated delivery/delete serta Gemini nyata dengan dummy pada lingkungan terisolasi.
-- [ ] Backup produksi/rules aktif; migrasi dan penerbitan ulang kredensial/kartu privat. Password terekspos tidak diaktifkan kembali.
-- [ ] Pasang backend, frontend dan rules pada database bernama yang tepat; tes otomatis deployment HTTPS.
-- [ ] Verifikasi IAM, ingress/proxy, retensi, budget dan recovery operasional di hosting nyata.
+- [ ] Simpan checkpoint GitHub dan verifikasi deployment preview Vercel terbaru.
+- [ ] Isi environment server dengan kredensial pengganti yang privat. Key Firebase lama terekspos dan izin membuat/menghapus key tidak tersedia (403); jangan memperluas key lama.
+- [ ] Tes provider nyata pada data dummy terisolasi: Cloudinary upload/stream/delete dan Gemini.
+- [ ] Backup produksi/rules aktif; terapkan migrasi dengan UID yang sama dan kredensial baru, backend/frontend/rules bersama pada database bernama yang benar.
+- [ ] Cabut password/kartu/API key/preset lama; batasi Maps key. Hanya dua kartu CDN telah diperiksa, bukan inventaris lengkap.
+- [ ] Pasang retensi, GC terjadwal, budget/rate perimeter, verifikasi recovery dan uji beban/soak hosting.
 
-## Batas tahap berikutnya
-
-Tahap 2 untuk pengembangan Feed/Story/Global Chat lebih lanjut sesudah gate keamanan ditutup. Tahap 3 untuk AI/game/tools, Tahap 4 penataan UI/UX dan organisasi proyek, Tahap 5 pengujian menyeluruh. Permission dan konfigurasi Global Chat sudah disiapkan; layanan chat penuh dan slow mode runtime belum dibuat.
-
-Lihat [laporan](docs/SECURITY_REPORT_ID.md), [pengujian](docs/TEST_REPORT.md), dan [migrasi/rollback](docs/MIGRATION_ROLLBACK.md). Rencana ini menggantikan dokumen lama yang menganggap password development/frontend aman.
+Lihat [laporan V2](docs/V2_REPORT_ID.md), [pengujian](docs/TEST_REPORT.md), [deployment](docs/DEPLOYMENT_STATUS.md), [runbook Vercel](docs/DEPLOYMENT_VERCEL.md), dan [rollback](docs/MIGRATION_ROLLBACK.md). Status lokal selesai tidak berarti layanan live sudah aman.

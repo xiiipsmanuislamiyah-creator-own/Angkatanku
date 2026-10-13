@@ -5,7 +5,7 @@ import { db } from '../lib/firebase';
 import { doc, getDoc, collection, query, where, getDocs, orderBy, updateDoc, arrayUnion } from '../lib/data';
 import { useAuth } from '../contexts/AuthContext';
 import { IDCardCanvas } from '../components/IDCardCanvas';
-import { StoryItem } from '../components/StoryRings';
+import { StoryItem, StoryText } from '../components/StoryRings';
 import { GalleryPhoto } from '../data/dummyData';
 import { uploadToCloudinary } from '../lib/cloudinary';
 import { OFFICIAL_STUDENTS } from '../data/officialStudents';
@@ -521,6 +521,11 @@ export default function PublicProfile({ userId, onNavigate }: { userId: string, 
         {/* Profile Info Overlay */}
         {/* Profile Info Overlay */}
         <div className="px-6 pb-6 pt-4 relative">
+          <div className="ak-row mb-5 mt-16 sm:mt-20 justify-center">
+            {user&&profile.ownerId&&profile.ownerId!==user.uid&&<a className="ak-button" href={'/chat?to='+encodeURIComponent(profile.ownerId)}><MessageCircle size={18}/>Kirim pesan</a>}
+            <a className="ak-button secondary" href={'/feed?author='+encodeURIComponent(profile.ownerId||userId)}>Postingan</a>
+            <a className="ak-button secondary" href={'/albums?author='+encodeURIComponent(profile.ownerId||userId)}>Album</a>
+          </div>
           {/* Top-Right Action Buttons (Edit Profil & Admin Panel) */}
           {(isOwner || isKepsekProfile) && (
             <div className="absolute top-4 right-4 sm:top-5 sm:right-6 z-20 flex items-center gap-2">
@@ -857,7 +862,7 @@ export default function PublicProfile({ userId, onNavigate }: { userId: string, 
                      onClick={() => setLightbox({ type: 'story', index: idx })}
                      className="relative w-28 h-40 sm:w-32 sm:h-48 rounded-2xl overflow-hidden shrink-0 group focus:outline-none shadow-md border border-slate-200/50 dark:border-slate-800/50 snap-start"
                    >
-                     {story.url ? (
+                     {story.type==='text'?<StoryText story={story}/>:story.url ? (
                        story.type === 'image' ? (
                          <img src={optimizeMediaUrl(story.url, story.type) || undefined} alt={story.title} className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                        ) : (
@@ -1046,7 +1051,7 @@ export default function PublicProfile({ userId, onNavigate }: { userId: string, 
           <div className="max-w-4xl max-h-[80vh] w-full flex flex-col items-center justify-center relative">
             {lightbox.type === 'story' && stories[lightbox.index] && (
               <div className="w-full max-w-sm aspect-[9/16] bg-slate-950 rounded-2xl overflow-hidden relative border border-white/10 shadow-2xl flex items-center justify-center">
-                {stories[lightbox.index].url ? (
+                {stories[lightbox.index].type==='text'?<StoryText story={stories[lightbox.index]}/>:stories[lightbox.index].url ? (
                   stories[lightbox.index].type === 'image' ? (
                     <img src={optimizeMediaUrl(stories[lightbox.index].url, stories[lightbox.index].type) || undefined} className="w-full h-full object-contain" />
                   ) : (

@@ -6,6 +6,8 @@ import {
   type Principal,
 } from "./security";
 import type { RecordData } from "./store";
+import {scheduleIssue} from '../shared/schedule';
+import {STORY_STYLES, STORY_FONTS, STORY_ALIGNS, POST_RATIOS} from '../shared/social';
 export const COLLECTIONS = new Set(
   "students teachers users gallery albums personal_albums stories posts messages schedules achievements announcements config system_moderation app_ratings".split(
     " ",
@@ -75,7 +77,7 @@ export function visible(
 const PROFILE_FIELDS =
   "name nama title jabatan mapel role classRoom gender quote motto hobbies favoriteSubject socialTag bannerUrl avatarUrl url_gambar colors cardTheme cardCreated hasCreatedCard bio achievement achievements favoriteFood dream job city instagram portfolio website nickname tags socials socialLinks audience";
 const CONTENT_FIELDS =
-  "title caption content text description date album category imageUrl mediaUrl videoUrl url thumbnailUrl mediaType type authorId authorName authorSubtitle identityKey subtitle avatarType avatarSrc uploaderId uploaderEmail userId user_id timestamp createdAt updatedAt created_at expiresAt duration viewedBy likes comments likes_count pinned hidden audience allowedUserIds classRoom media coverUrl items photos order backgroundColor textColor fontStyle position align isOfficial authorAvatar authorRole commentLocked";
+  "title caption content text description date album category imageUrl mediaUrl videoUrl url thumbnailUrl mediaType type authorId authorName authorSubtitle identityKey subtitle avatarType avatarSrc uploaderId uploaderEmail userId user_id timestamp createdAt updatedAt created_at expiresAt duration viewedBy likes comments likes_count pinned hidden audience allowedUserIds classRoom media coverUrl items photos order backgroundColor textColor fontStyle position align isOfficial authorAvatar authorRole commentLocked stylePreset aspect fit coverIndex performedBy profileId";
 const ACADEMIC_FIELDS =
   "title description category date year imageUrl icon color level name subject teacher teacherId day start end startTime endTime time duration classRoom className room order mapel guru hari jam mulai selesai type entries lessons schedule schedules audience winner rank badge message active";
 const MESSAGE_FIELDS =
@@ -147,7 +149,7 @@ export function project(
   if (c === "posts") {
     out.comments = (d.comments || []).map((x: any) =>
       Object.fromEntries(
-        ["id", "post_id", "author", "content", "created_at", "user_id"]
+        ["id", "post_id", "author", "content", "created_at", "user_id", "parentId", "deleted"]
           .filter((k) => x[k] !== undefined)
           .map((k) => [k, publicValue(x[k], k)]),
       ),
@@ -344,6 +346,8 @@ export function validateChange(
         "senderName",
         "read",
         "isTeacher",
+        "performedBy",
+        "profileId",
       ].includes(k)
     )
       continue;
@@ -381,7 +385,7 @@ export function validateChange(
       );
     if (["identityKey", "authorRole"].includes(k))
       requireThat(
-        moderator || v === (k === "identityKey" ? "personal" : "member"),
+        moderator || (k === 'identityKey' && can(p,'identity.publish',{classRoom:v==='angkatan-ku-ips1'?'IPS 1':v==='angkatan-ku-ips2'?'IPS 2':''})) || v === (k === "identityKey" ? "personal" : "member"),
         403,
         "FORBIDDEN",
       );
@@ -399,7 +403,7 @@ export function validateChange(
     )
       requireThat(typeof v === "boolean");
     const flexible = new Set(
-      "colors socials socialLinks hobbies tags achievements allowedUserIds media items photos schedules entries lessons schedule position duration order year start end rating".split(
+      "colors socials socialLinks hobbies tags achievements allowedUserIds media items photos schedules entries lessons schedule position duration order year start end rating coverIndex".split(
         " ",
       ),
     );
@@ -429,13 +433,23 @@ export function validateChange(
         likes_count: 0,
         comments: [],
       });
-    if (!moderator)
+    if(old && ['identityKey','authorName','authorRole','isOfficial'].some(k=>d[k]!==undefined&&d[k]!==old[k])) requireThat(false,403,'IDENTITY_IMMUTABLE');
+    if (!old) {
+      const identity = result.identityKey || 'personal';
+      if(identity !== 'personal') {
+        const classRoom = identity === 'angkatan-ku-ips1' ? 'IPS 1' : identity === 'angkatan-ku-ips2' ? 'IPS 2' : '';
+        requireThat(['angkatan-ku-ips1','angkatan-ku-ips2','ma-nu'].includes(identity)&&can(p,'identity.publish',{classRoom}),403,'PUBLISH_IDENTITY_DENIED');
+        Object.assign(result,{classRoom,authorName:classRoom?'XII '+classRoom+' Official':'MA NU Islamiyah',isOfficial:true,performedBy:p.uid,authorRole:'official'});
+      } else
       Object.assign(result, {
         authorName: p.account.displayName || p.account.username,
-        authorRole: "member",
+        authorRole: p.account.profileKind === 'teacher' ? 'teacher' : 'member',
         isOfficial: false,
         identityKey: "personal",
+        profileId:p.account.profileId,
+        classRoom:p.account.role==='member'?(p.account.classRooms?.[0]||''):(result.classRoom||p.account.classRooms?.[0]||''),
       });
+    }
     if (c === "stories" && !old)
       Object.assign(result, {
         timestamp: Date.now(),
@@ -479,18 +493,33 @@ export function validateChange(
   }
   if (p.account.role === "admin" && p.account.scope !== "school" && moderator)
     requireThat(can(p, moderationPermission(c), result), 403, "SCOPE_DENIED");
-  if (c === "stories")
+  if (c === "stories" && result.type === 'text') {
+    requireThat(typeof result.text==='string'&&result.text.trim().length>0&&result.text.length<=700);
+    requireThat(Object.hasOwn(STORY_STYLES,result.stylePreset||'navy')&&STORY_FONTS.includes(result.fontStyle||'sans')&&STORY_ALIGNS.includes(result.align||'center'));
+    result.url='';
+    result.backgroundColor=STORY_STYLES[(result.stylePreset||'navy') as keyof typeof STORY_STYLES].background;
+    result.textColor=STORY_STYLES[(result.stylePreset||'navy') as keyof typeof STORY_STYLES].color;
+  } else if (c === "stories")
     requireThat(
       typeof result.url === "string" && result.url.length > 0,
       400,
       "MEDIA_REQUIRED",
     );
+  if(c==='posts'){
+    requireThat((typeof result.caption==='string'&&result.caption.trim().length>0)||result.media?.length>0,400,'CONTENT_REQUIRED');
+    requireThat((result.caption||'').length<=4000&&(!result.aspect||POST_RATIOS.includes(result.aspect))&&(!result.fit||['contain','cover'].includes(result.fit)));
+  }
+  if(c==='albums'){
+    requireThat(typeof result.title==='string'&&result.title.trim().length>0&&result.title.length<=120&&Array.isArray(result.media)&&result.media.length>0&&result.media.length<=20);
+    result.coverIndex=result.coverIndex||0;requireThat(Number.isInteger(result.coverIndex)&&result.coverIndex>=0&&result.coverIndex<result.media.length);
+  }
   if (["gallery", "personal_albums"].includes(c))
     requireThat(
       typeof result.imageUrl === "string" && result.imageUrl.length > 0,
       400,
       "MEDIA_REQUIRED",
     );
+  if(c==='schedules'&&d.schedules){const issue=scheduleIssue(d.schedules);requireThat(!issue,400,'SCHEDULE_CONFLICT',issue||'Jadwal tidak valid.');}
   result.createdAt = old?.createdAt || Date.now();
   result.updatedAt = Date.now();
   checkUrls(result);

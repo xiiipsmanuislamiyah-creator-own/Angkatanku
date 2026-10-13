@@ -1,71 +1,55 @@
-# Hasil pengujian Tahap 1
+# Pengujian aktual AngkatanKU V2
 
-Tanggal: 12 Oktober 2026. Hasil diulang pada source yang dipulihkan dan diperbaiki. Tidak ada pengujian tulis pada data produksi.
+13 Oktober 2026. Semua tes perubahan data menggunakan akun dummy dan lingkungan lokal/emulator. Tidak ada eksploitasi destruktif atau tes tulis database produksi.
 
-## Hasil yang benar-benar dijalankan
-
-| Pemeriksaan | Hasil | Lingkungan/cakupan |
+| Pemeriksaan | Hasil | Bukti/cakupan |
 |---|---|---|
-| npm run lint | Lulus, exit 0 | TypeScript noEmit |
-| npm test | 36/36 lulus | API Express nyata di localhost; MemoryStore transaksional; provider dummy |
-| npm run test:rules | 3/3 lulus | Emulator Firestore resmi 1.22.0, Java 21, project demo-angkatanku |
-| npm run build | Lulus, exit 0 | Vite 6.4.3 + esbuild, 2.188 modul |
-| npm run test:e2e | 10/10 lulus; 0 flaky/skipped | Chromium headless, Playwright 1.56.1, build aktual |
-| npm run test:deployment | 1/1 lulus | Entrypoint produksi asli, HTTPS lokal, Chromium, Firestore emulator + deny-all rules |
-| npm audit --json | 0 advisory | Critical/high/moderate/low/info semuanya 0 pada lockfile saat pemeriksaan |
-| Scan nilai rahasia dikenal | 0 kecocokan | 60 nilai dikenal terhadap 131 file source/dokumen/build saat scan; bukan seluruh sejarah Git |
+| `npm run lint` | PASS | TypeScript noEmit, exit 0 |
+| `npm test` | PASS 47/47 | API Express nyata, store transaksional fixture, provider dummy; termasuk native handler Vercel tanpa env |
+| `npm run test:rules` | PASS 4/4 | Emulator resmi Java 21, project demo-angkatanku |
+| `npm run build` | PASS | Vite 6.4.3, 2.196 modul; frontend dan server terpisah |
+| `npm run test:e2e` | PASS 20/20 | Chromium, Playwright 1.56.1, build aktual; 0 skipped/flaky, sekitar 49 detik pada pengulangan penuh |
+| Runtime produksi HTTPS lokal | PASS 1/1 | Build server asli, cookie Secure, emulator/rules aktual, Chromium |
+| `npm audit --json` | PASS, 0 advisory | Seluruh dependency/dev pada lockfile saat pemeriksaan |
 
-Run browser terakhir mulai 2026-10-12T03:41:13.380Z, durasi sekitar 95 detik. Detail mentah browser/screenshot disimpan lokal di test-results dan tidak dimasukkan ke Git. Rangkaian akhir dijalankan berurutan lint → unit/API → build → browser, dengan emulator pada port terpisah.
+Total **72 tes**, bukan 72 tes provider produksi. 216 percobaan akses Firestore termasuk dalam empat tes emulator, bukan tambahan jumlah suite. Pemeriksaan visual responsif diulang untuk menunggu animasi selesai sebelum screenshot.
 
-## Cakupan API/unit
+## Autentikasi, ACL, data dan keamanan
 
-- Login benar/salah, cookie nyata, tidak memantulkan password, role palsu dalam request diabaikan.
-- Brute force paralel: 12 percobaan pada satu username menghasilkan 5 penolakan kredensial dan 7 rate-limit; pemalsuan X-Forwarded-For tidak melewati kuota IP.
-- CSRF/Origin ditolak, session expired/idle/logout/revoke, perubahan password mencabut semua sesi, revoke sesi pengguna lain ditolak.
-- Member ke endpoint owner, admin menaikkan role sendiri, takeover profil owner, perubahan profil orang lain, perubahan identitas resmi dan permission di luar lingkup ditolak.
-- Jenis profil target tetap siswa ketika diedit admin guru; moderasi tidak mengambil alih kepemilikan konten legacy yang belum terpetakan; penulis tidak dapat membatalkan hidden/comment lock dari moderator.
-- Owner membuat akun member saja, password sementara membatasi penulisan, perubahan izin mencabut sesi, pagination audit/laporan tanpa record berulang.
-- Audience publik/anggota/restricted, legacy tanpa owner, private data projection, timestamp, nested secret removal, expiry Story dan agregat view.
-- Owner tidak dapat membaca DM orang lain; peserta dapat melaporkan snapshot pesan tertentu secara transparan.
-- Upload/delete/AI tanpa sesi tidak memanggil provider. SVG, MIME tidak cocok, HTML tersamar, PNG rusak, ukuran dan resolusi berlebih ditolak.
-- Media proxy mengikuti audience parent; penautan media milik orang lain ditolak; GC menolak media masih terpakai/legacy; kegagalan provider mempertahankan tombstone yang bisa dicoba ulang.
-- AI input/history/quota/feature gate dan konteks tanpa DM; komentar/like, guest write dan read-only.
-- Injection berupa prototype key dan URL berbahaya ditolak. Teks markup disimpan sebagai teks; source diperiksa tanpa sink dangerouslySetInnerHTML/eval. Ini bukan fuzzing XSS universal.
-- Payload lama jadwal/prestasi/kartu/profil guru, ownership legacy berbasis UID pasti, format QR JSON/label/pipa.
-- Migrasi menjaga UID/ID profil, menonaktifkan password anggota yang terekspos, backup terenkripsi, deteksi key salah/tampering dan konflik sebelum apply/rollback.
+Login benar/salah dan QR memakai server yang sama; cookie, session expiry/idle/logout/revoke, password wajib diganti, reauth, CSRF/Origin, brute force paralel dan forged X-Forwarded-For diperiksa. Member ditolak pada API owner, admin tidak dapat menaikkan role/mengambil alih owner, profil orang lain dan identitas resmi dilindungi. Role localStorage/request tidak dipercaya. Audit/laporan dipaginasi.
 
-## Emulator
+Audience public/member/restricted, hidden/comment lock, expiry Story, kepemilikan media, prototype-key/URL injection, teks markup literal, file MIME/signature/ukuran/resolusi, upload/delete/AI tanpa login dan kuota AI diuji. Scoped permissions, profil guru/siswa, payload jadwal/kartu/prestasi lama, migrasi UID, backup AES-GCM, tampering dan konflik rollback juga diuji. Ini bukan fuzzing universal atau audit independen.
 
-Tes pertama menjalankan **108 operasi langsung**: 3 konteks (tanpa login/member/klaim owner palsu) × 9 koleksi × get/list/set/delete. Seluruhnya ditolak Rules. Tes kedua menjalankan rate limit paralel dan revoke sesi melalui transaksi Firestore nyata. Tes ketiga menjalankan apply migrasi dan rollback terenkripsi dengan ID dokumen serta timestamp yang sama dengan nilai sebelum migrasi.
+## Cakupan baru V2
 
-Satu ekspektasi timestamp awal salah karena membandingkan presisi input dengan nilai yang sudah disimpan Firestore. Tes diperbaiki agar membandingkan nilai persisted sebelum/sesudah rollback, lalu ketiga tes diulang dan lulus. Kesalahan implementasi ownership yang sempat menyebabkan 500 juga diperbaiki dan kasusnya lulus ulang.
+- Dua chat global: siswa saja versus komunitas; slow mode, rate limit, pin/moderasi, reauth, retry paralel idempotent, newest-first pagination subkoleksi nyata. Revision poll tidak membaca 50 pesan lagi ketika isi belum berubah.
+- DM hanya peserta, termasuk penolakan owner nonpeserta; block diterapkan ke jalur lama dan baru, lintas ruang/reply ditolak, laporan hanya cuplikan pilihan, withdrawal/tombstone.
+- Guest like hanya konten publik, cookie+CSRF+kuota; unlike/retry tidak menambah hitungan ganda. Bookmark milik sendiri.
+- Identitas resmi memerlukan izin dan lingkup; penulis/timestamp ditetapkan server. Komentar satu tingkat, duplicate limit, soft delete dan moderator freshness.
+- Nusa Memory consent, pending/approved/rejected, version conflict, scoped review, visibility retrieval dan penolakan self-grant. Respons AI fixture benar-benar muncul di UI, bukan sekadar indikator sukses.
+- Signed direct upload tetap pending/private sampai inspeksi server; ownership, ukuran yang diverifikasi, revoke dan lifetime signature/GC diuji memakai provider fixture.
+- Jadwal menolak range terbalik/overlap/hari duplikat, sambil menerima format legacy yang hanya mempunyai jam mulai.
 
-Tiga kasus tambahan di atas mula-mula direproduksi dengan tes yang gagal pada implementasi, kemudian diperbaiki dan tes yang sama lulus. Seluruh suite unit/API dan emulator juga diulang sesudah perbaikan tersebut.
+## Emulator Firestore
 
-## Browser
+216 operasi get/list/set/delete pada koleksi baru dan lama ditolak untuk pengunjung, member dan klaim owner palsu. Transaksi login paralel/revoke, apply migrasi dan rollback terenkripsi, serta chat pagination/retry/block menggunakan emulator Firestore nyata.
 
-1. Login manual salah/benar, reload, pemalsuan localStorage role, penolakan admin dan logout.
-2. Upload gambar QR dummy, animasi verifikasi terlihat, login melalui backend.
-3. QR SVG ditolak dan pengunjung tidak dapat membuka panel owner.
-4. Owner men-suspend akun dummy melalui dialog reauth; audit tercatat dan login target ditolak.
-5. Sepuluh layar lama terbuka tanpa JavaScript exception: home, profil, anggota, guru, jadwal, prestasi, galeri, feed, inbox, Nusa AI.
-6–9. Layar login pada lebar 320, 390, 768, 1280 px tanpa overflow dokumen; screenshot diperiksa untuk mobile/desktop.
-10. Kartu login privat diunduh, QR pada PNG hasil canvas didekode dan cocok dengan fixture; pratinjau hilang, password berubah, sesi lama hilang, login password baru berhasil.
+Query descending document ID subkoleksi sempat menghasilkan 500 pada emulator. ID pesan sekarang memakai timestamp terbalik dengan pengurutan ascending; tes yang sama dan keseluruhan suite kembali PASS. Tidak bergantung pada perilaku MemoryStore saja.
 
-Browser memblokir jaringan eksternal dan menggunakan database/provider fixture. Tes render layar bukan pembuktian seluruh fungsi bisnis setiap layar. Kamera fisik, Safari/Firefox, perangkat nyata, embedding AI Studio dengan cookie pihak ketiga, aksesibilitas menyeluruh, load/soak dan performa produksi belum diuji.
+## Browser dan runtime
 
-## Tambahan verifikasi entrypoint produksi
+20 tes meliputi manual login/reload/forged role/logout, QR gambar dummy dan animasi scanner, QR SVG ditolak, owner suspend lewat reauth dengan audit, sepuluh halaman legacy, kartu PNG diunduh dan QR didekode kembali, perubahan password mencabut sesi.
 
-Pada kelanjutan 12 Oktober 2026, npm run test:deployment membangun aplikasi dan menjalankan scripts/start-production.mjs melalui proxy HTTPS lokal dengan sertifikat dummy. Firestore emulator memakai rules repo dan akun dummy. Test lulus; setelah rules dipasang eksplisit, tes runtime dan ketiga tes emulator diulang serta lulus. TypeScript juga lulus. Tidak ada perubahan kode aplikasi sejak 49 tes sebelumnya; tambahan ini menjadikan total **50 tes**.
+Fitur V2 diuji melalui UI: posting literal XSS, bookmark, komentar/hapus/edit; Story teks/preset dan moderator reauth; album 12 file menjaga urutan/sampul; global chat/DM/block; jawaban Nusa dan kontribusi Memory. Delapan route baru diperiksa pada 320/360/390/480/768/1024/1440 px, termasuk posisi kolom agar overflow:hidden tidak menyamarkan pemotongan. Sampel screenshot Home, Feed, Nusa dan Mading mobile/desktop diperiksa.
 
-Browser memverifikasi login lewat UI build asli, cookie __Host-angkatan_session Secure/HttpOnly/SameSite=Strict yang tidak terbaca oleh document.cookie, sesi tetap ada setelah reload, write profil ke Firestore melalui API, member ditolak pada API owner, Origin asing ditolak, logout menghapus sesi/cookie. Request ke /.env, /dist/server/server.mjs dan /server.ts hanya menerima halaman SPA, bukan isi file server/secret. Launcher emulator kini menganggap proses tes yang berakhir karena sinyal sebagai gagal, bukan lulus.
+Satu run gagal karena pemeriksaan opsional dialog sambutan mendahului render dialog lalu menghalangi klik logout. Flag sambutan kini dikonsumsi sekali saat tampil, timer tertunda dihapus, dan tes menunggu serta menutup dialog secara eksplisit sebelum reload. Suite penuh diulang dan 20/20 lulus.
 
-Sertifikat/port/database tes lokal tidak membuktikan konfigurasi TLS, ingress, IAM atau provider deployment nyata. Pengujian provider eksternal tetap terpisah.
+Runtime HTTPS lokal membuktikan cookie __Host-angkatan_session Secure/HttpOnly/SameSite=Strict, login/reload/write/logout, penolakan API owner/Origin asing, dan source/.env tidak disajikan. Native Node handler Vercel diuji terpisah untuk JSON 503 saat konfigurasi tidak ada. Sertifikat lokal tidak membuktikan TLS/IAM deployment.
 
-## Read-only eksternal dan yang belum diverifikasi
+## Performa dan batas verifikasi
 
-Firebase Auth dan Firestore REST berhasil dibaca untuk pemetaan agregat; dua kartu CDN berhasil diambil/didekode. Tidak melakukan login akun nyata atau perubahan data. Firebase Admin gRPC ke produksi tidak menyelesaikan pembacaan di lingkungan ini; audit menggunakan REST. CLI migrasi produksi tidak diklaim sudah berjalan.
+`node --import tsx scripts/measure-ui.ts` mengambil sampel build lokal, guest, cache baru, reduced motion, Chromium 390/1280 px, jaringan eksternal diblokir. Lihat [PERFORMANCE.md](PERFORMANCE.md). Ini sampel lab tunggal, bukan Core Web Vitals lapangan atau uji beban.
 
-Vercel project lookup, termasuk team slug, mendapat HTTP 403; Cloud Run services list mendapat 403 dengan alasan SERVICE_DISABLED. Resource Manager projects.get dan testIamPermissions berikutnya berhasil (200), tetapi dari delapan izin yang diminta hanya resourcemanager.projects.get dikembalikan; izin aktivasi API/deployment tidak tersedia. Lihat DEPLOYMENT_STATUS.md. Backend HTTPS pada hosting nyata, IAM deployment, Cloudinary upload/private delivery/delete nyata, Gemini generation nyata, rotasi key, backup produksi dan cutover belum terverifikasi. Provider dummy tidak membuktikan konfigurasi provider produksi.
+Belum diverifikasi: Cloudinary upload/delivery/delete nyata dan file besar di Vercel; Gemini generation nyata; key rotation; migrasi/rules produksi; kamera fisik; Safari/Firefox/perangkat nyata; login embedded AI Studio; aksesibilitas menyeluruh; beban/soak; budget/retensi/recovery produksi. Data/browser/provider dummy tidak membuktikan bagian tersebut. Status preview nyata dicatat terpisah dalam DEPLOYMENT_STATUS.md.
 
-Peringatan build yang tersisa hanya import data.ts yang sekaligus statis/dinamis (tidak menghasilkan chunk terpisah). Tidak ada error TypeScript atau build. Hasil dependency audit bersifat pada saat dijalankan, bukan jaminan tidak ada kerentanan baru.
+Scan terakhir terhadap 61 nilai rahasia dikenal pada 192 file source/docs/build: 0 file cocok. Ini tidak mencakup seluruh Git history atau seluruh pola secret yang tidak dikenal. Visual QA juga menemukan scroll awal Nusa menggeser seluruh halaman; autoscroll kini hanya di dalam viewport percakapan, dengan regresi posisi scroll awal.

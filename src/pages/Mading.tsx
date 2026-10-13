@@ -303,6 +303,7 @@ export default function Mading({ onNavigate }: { onNavigate?: (tab: string, name
   
   // Search & Filter state
   const [searchQuery, setSearchQuery] = useState('');
+  const [listMode,setListMode]=useState(()=>window.innerWidth<768);
   const [activeFilter, setActiveFilter] = useState<'all' | 'ips1' | 'ips2'>('all');
   
   // Branch expansion states - Initially start with just the glowing center node
@@ -851,6 +852,7 @@ export default function Mading({ onNavigate }: { onNavigate?: (tab: string, name
           </div>
         </div>
 
+        <button className="ak-button secondary pointer-events-auto" onClick={()=>setListMode(v=>!v)}>{listMode?'Buka peta interaktif':'Tampilkan daftar'}</button>
         {/* Quick Search & Filters */}
         <div className="flex items-center gap-2 pointer-events-auto relative">
           <div className="relative">
@@ -904,7 +906,7 @@ export default function Mading({ onNavigate }: { onNavigate?: (tab: string, name
 
       {/* Main Interactive Zoom/Pan Canvas */}
       <div className="flex-1 w-full h-full relative cursor-grab active:cursor-grabbing">
-        <TransformWrapper
+        {listMode?<section className="absolute inset-0 overflow-y-auto pt-56 sm:pt-28 pb-24 px-5 text-white" aria-label="Daftar struktur angkatan"><p className="mb-4 text-slate-300">Pilih nama untuk membuka profil. Peta interaktif tetap tersedia melalui tombol di atas.</p><div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">{students.filter(s=>!searchQuery||[s.name,s.role,s.classRoom].join(' ').toLowerCase().includes(searchQuery.toLowerCase())).map(s=><button key={s.id} className="text-left p-4 rounded-xl border border-slate-700 bg-slate-900 hover:border-emerald-500" onClick={()=>onNavigate?.('public-profile',s.name,s.id)}><strong>{s.name}</strong><p className="text-sm text-slate-300">{s.classRoom} · {s.role||'Anggota'}</p></button>)}</div>{!students.length&&<p>Belum ada data struktur yang tersedia untuk akses ini.</p>}</section>:<TransformWrapper
           ref={transformRef}
           initialScale={initialCenterScale}
           minScale={0.25}
@@ -1661,7 +1663,7 @@ export default function Mading({ onNavigate }: { onNavigate?: (tab: string, name
 
             </div>
           </TransformComponent>
-        </TransformWrapper>
+        </TransformWrapper>}
       </div>
 
       {/* ==================== SLEEK IN-PAGE STUDENT INSPECTOR DRAWER ==================== */}

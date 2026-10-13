@@ -11,6 +11,8 @@ const permissions = [
   "announcements.manage",
   "config.manage",
   "audit.read",
+  "memory.review",
+  "identity.publish",
 ];
 const input =
   "w-full p-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-sm";
@@ -426,6 +428,9 @@ export default function SecurityControlCenter() {
               }
             />
           </label>
+          <label className="block text-sm mt-3">Jeda kirim chat global (detik)
+            <input className={input} type="number" min={0} max={300} value={settings.slowMode||0} onChange={e=>setSettings((s:any)=>({...s,slowMode:Number(e.target.value)}))}/>
+          </label>
           <button
             className={button + " mt-3"}
             onClick={() => {
@@ -511,6 +516,7 @@ export default function SecurityControlCenter() {
           URL CDN lama tetap publik sampai medianya dimigrasikan.
         </p>
       </details>
+      {(isOwner||user?.scope==='school'&&user?.permissions?.includes('globalChat.moderate'))&&<details><summary>Moderasi chat global</summary><p className="text-sm">Jeda sementara akun pelanggar. Semua tindakan dicatat.</p><form className="space-y-2" onSubmit={e=>{e.preventDefault();const f=new FormData(e.currentTarget);request('Jeda akses kirim pesan','/admin/chat/mute',{userId:f.get('userId'),minutes:Number(f.get('minutes')),reason:f.get('reason')});}}><label className="block text-sm">ID akun<input className={input} name="userId" required/></label><label className="block text-sm">Durasi menit (0 untuk melepas)<input className={input} name="minutes" type="number" min={0} max={10080} defaultValue={15} required/></label><label className="block text-sm">Alasan<input className={input} name="reason" minLength={3} maxLength={500} required/></label><button className={button}>Tinjau tindakan</button></form></details>}
       <details>
         <summary className="font-semibold cursor-pointer">
           Laporan konten ({reports.length})
@@ -520,6 +526,8 @@ export default function SecurityControlCenter() {
         </p>
         {reports.map((r) => (
           <div key={r.id} className="border-t py-2 text-sm">
+            <p>Status: {r.status||'open'}</p>
+            {r.status==='open'&&<div className="flex gap-2">{[['resolved','Selesaikan'],['dismissed','Tutup tanpa tindakan']].map(([status,label])=><button key={status} className={button} onClick={()=>{const reason=prompt('Alasan keputusan laporan');if(reason&&reason.trim().length>=3)request(label,'/admin/reports/'+r.id+'/resolve',{status,reason});}}>{label}</button>)}</div>}
             <p>
               {r.collection} — {r.reason}
             </p>

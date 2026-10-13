@@ -30,8 +30,8 @@ export class MemoryStore implements Store {
       .filter(
         ([k, v]) =>
           k.startsWith(c + "/") &&
-          k.split("/").length === 2 &&
-          (!after || k.slice(c.length + 1) > after) &&
+          k.split("/").length === c.split('/').length + 1 &&
+          (!after || k.slice(c.length+1)>after) &&
           filters.every(([f, x]) => v[f] === x),
       )
       .sort(([a], [b]) => (a < b ? -1 : 1))

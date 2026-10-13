@@ -119,7 +119,7 @@ function ConceptNode({
 export default function Guru({ onNavigate }: { onNavigate?: (tab: string, name?: string, data?: any) => void }) {
   const { isAdmin } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
-  const [viewMode, setViewMode] = useState<'mindmap' | 'grid'>('mindmap');
+  const [viewMode, setViewMode] = useState<'mindmap' | 'grid'>('grid');
   const [teachers, setTeachers] = useState<Teacher[]>(INITIAL_TEACHERS);
   const [loading, setLoading] = useState(false);
 

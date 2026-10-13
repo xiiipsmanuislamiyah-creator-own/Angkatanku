@@ -17,7 +17,7 @@ import {
 import { firebaseStore } from "../../server/store";
 import { fixture, seed, MemoryStore, TEST_PASSWORD } from "../helpers";
 setLogLevel("silent");
-test("108 direct Firestore attempts denied for anonymous, member and forged owner claims", async () => {
+test("216 direct Firestore attempts denied for anonymous, member and forged owner claims", async () => {
   const env = await initializeTestEnvironment({
     projectId: "demo-angkatanku",
     firestore: {
@@ -48,6 +48,15 @@ test("108 direct Firestore attempts denied for anonymous, member and forged owne
         "posts",
         "config",
         "security_audit",
+        "security_chat_rooms/global-community/messages",
+        "security_chat_preferences",
+        "security_chat_inboxes/member/rooms",
+        "security_memory",
+        "security_visitors",
+        "security_bookmarks/member/posts",
+        "security_content_requests",
+        "security_media",
+        "security_chat_requests",
       ]) {
         const db = ctx.firestore(),
           ref = doc(db, c, "dummy");
@@ -61,7 +70,7 @@ test("108 direct Firestore attempts denied for anonymous, member and forged owne
           checks++;
         }
       }
-    assert.equal(checks, 108);
+    assert.equal(checks, 216);
   } finally {
     await env.cleanup();
   }
@@ -145,4 +154,22 @@ test("real Firestore migration and encrypted rollback preserve timestamps and do
   assert.equal(result!.z, baseline!.z);
   assert.equal(result!.a, baseline!.a);
   assert.equal(await store.get("security_accounts/migration-dummy"), null);
+});
+
+test('real Firestore chat pagination, retry transaction and DM block use nested collections safely',async()=>{
+ const store=firebaseStore(),memory=new MemoryStore();await seed(memory);
+ await store.atomic(['security_accounts/member'],()=>({value:null,writes:Object.fromEntries(memory.map)}));
+ // Reset quotas from the prior concurrency test without touching any real database.
+ const rates=await store.list('security_rates',[],undefined,500);if(rates.length)await store.atomic(rates.map(r=>'security_rates/'+r.id),()=>({value:null,writes:Object.fromEntries(rates.map(r=>['security_rates/'+r.id,null]))}));
+ const f=await fixture({store});try{
+  const a=await f.login(),b=await f.login('other');
+  const room=(await f.call('/chat/dm',{userId:'other'},a)).body.id;
+  const requestId='emulator-'+Date.now();
+  const results=await Promise.all(Array.from({length:3},()=>f.call('/chat/'+room+'/messages',{content:'Emulator dummy message',requestId},a)));
+  assert.ok(results.every(r=>r.status===200),JSON.stringify(results.map(r=>r.body.code)));
+  assert.equal(new Set(results.map(r=>r.body.id)).size,1);
+  const listing=await f.call('/chat/'+room+'/messages',undefined,b);assert.equal(listing.status,200);assert.ok(listing.body.items.some((r:any)=>r.id===results[0].body.id));
+  assert.equal((await f.call('/chat/preferences',{userId:'member',blocked:true},b)).status,200);
+  assert.equal((await f.call('/chat/'+room+'/messages',{content:'blocked',requestId:requestId+'-blocked'},a)).status,403);
+ }finally{await f.close();}
 });

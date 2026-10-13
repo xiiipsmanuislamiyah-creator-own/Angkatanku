@@ -1,35 +1,38 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { useAuth } from './contexts/AuthContext';
 import { motion, AnimatePresence } from 'motion/react';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 
 // Page Imports
-import Home from './pages/Home';
-import JadwalPelajaran from './pages/JadwalPelajaran';
-import Galeri from './pages/Galeri';
-import Prestasi from './pages/Prestasi';
-import FeedAngkatan from './pages/FeedAngkatan';
-import NusaAI from './pages/NusaAI';
-import AlatGame from './pages/AlatGame';
-import PortalAkses from './pages/PortalAkses';
-import LockScreen from './pages/LockScreen';
-import Guru from './pages/Guru';
-import Anggota from './pages/Anggota';
-import Mading from './pages/Mading';
-import AdminPanel from './pages/AdminPanel';
-import Login from './pages/Login';
-import Profile from './pages/Profile';
-import PublicProfile from './pages/PublicProfile';
-import Rating from './pages/Rating';
+const Home = lazy(() => import('./pages/Home'));
+const JadwalPelajaran = lazy(() => import('./pages/JadwalPelajaran'));
+const Galeri = lazy(() => import('./pages/Galeri'));
+const Prestasi = lazy(() => import('./pages/Prestasi'));
+const FeedAngkatan = lazy(() => import('./pages/FeedAngkatan'));
+const NusaAI = lazy(() => import('./pages/NusaAI'));
+const AlatGame = lazy(() => import('./pages/AlatGame'));
+const PortalAkses = lazy(() => import('./pages/PortalAkses'));
+const LockScreen = lazy(() => import('./pages/LockScreen'));
+const Guru = lazy(() => import('./pages/Guru'));
+const Anggota = lazy(() => import('./pages/Anggota'));
+const Mading = lazy(() => import('./pages/Mading'));
+const AdminPanel = lazy(() => import('./pages/AdminPanel'));
+const Login = lazy(() => import('./pages/Login'));
+const Profile = lazy(() => import('./pages/Profile'));
+const PublicProfile = lazy(() => import('./pages/PublicProfile'));
+const Rating = lazy(() => import('./pages/Rating'));
 import { SystemNotification } from './SystemNotification';
-import Inbox from './pages/Inbox';
-import CardSetup from './pages/CardSetup';
-import TentangWeb from './pages/TentangWeb';
-import LandingPage from './pages/LandingPage';
+const Inbox = lazy(() => import('./pages/Inbox'));
+const CardSetup = lazy(() => import('./pages/CardSetup'));
+const TentangWeb = lazy(() => import('./pages/TentangWeb'));
+const LandingPage = lazy(() => import('./pages/LandingPage'));
 import { EditCardModal } from './components/EditCardModal';
 import { LoginWelcomeModal } from './components/LoginWelcomeModal';
 import CinematicRevealIntro from './components/CinematicRevealIntro';
+
+const ChatHub=lazy(()=>import('./pages/ChatHub'));
+const Albums=lazy(()=>import('./pages/Albums'));
 
 // Known route mapping to support direct URLs like /jadwal, /mading, /home
 const ROUTE_MAP: Record<string, string> = {
@@ -63,7 +66,7 @@ const ROUTE_MAP: Record<string, string> = {
   profile: 'profile',
   profil: 'profile',
   setup: 'setup',
-  inbox: 'inbox'
+  inbox: 'inbox', chat:'chat', albums:'albums'
 };
 
 const parseLocationFromUrl = (): { tab: string; profileId?: string } => {
@@ -274,30 +277,10 @@ export default function App() {
         return <Prestasi />;
       case 'setup':
         return <CardSetup onNavigate={navigateWithPortal} />;
-      case 'feed':
-        if (role === 'member' && !hasCreatedCard) {
-          return (
-            <LockScreen 
-              featureName="Feed Angkatan" 
-              onNavigate={navigateWithPortal}
-              cardRequired={true}
-              onOpenCreateCard={() => openCreateCard('Wajib membuat Kartu Siswa terlebih dahulu untuk mengakses dan memposting di Feed Angkatan!')}
-            />
-          );
-        }
-        return unlocked ? <FeedAngkatan /> : <LockScreen featureName="Feed Angkatan" onNavigate={navigateWithPortal} />;
-      case 'nusa-ai':
-        if (role === 'member' && !hasCreatedCard) {
-          return (
-            <LockScreen 
-              featureName="Nusa AI Bot" 
-              onNavigate={navigateWithPortal}
-              cardRequired={true}
-              onOpenCreateCard={() => openCreateCard('Wajib membuat Kartu Siswa terlebih dahulu sebelum menggunakan asisten Nusa AI!')}
-            />
-          );
-        }
-        return unlocked ? <NusaAI /> : <LockScreen featureName="Nusa AI Bot" onNavigate={navigateWithPortal} />;
+      case 'feed': return <FeedAngkatan />;
+      case 'nusa-ai': return <NusaAI />;
+      case 'chat': return <ChatHub />;
+      case 'albums': return <Albums />;
       case 'alat-game':
         return <AlatGame />;
       case 'guru':
@@ -328,6 +311,7 @@ export default function App() {
   return (
     <div className={`${activeTab === 'mading' ? 'h-dvh overflow-hidden' : 'min-h-screen'} bg-slate-50/40 dark:bg-slate-950 text-slate-800 dark:text-slate-100 font-sans flex flex-col antialiased selection:bg-teal-500 selection:text-white overflow-x-hidden transition-colors duration-300`}>
       
+      <a className="ak-skip" href="#main-content">Lewati ke konten</a>
       {/* 1. Frosted Navigation bar (hidden on 'landing' and 'tentang' to keep tentang page with only the centered big logo) */}
       {activeTab !== 'landing' && activeTab !== 'tentang' && (
         <Navbar activeTab={activeTab} setActiveTab={navigateWithPortal} unlocked={unlocked} isDark={isDark} toggleTheme={toggleTheme} />
@@ -335,7 +319,7 @@ export default function App() {
       <SystemNotification />
 
       {/* 2. Main Page Container with transition space for fixed header */}
-      <main className={`flex-1 w-full ${activeTab === 'landing' ? 'p-0' : activeTab === 'tentang' ? 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-12' : activeTab === 'mading' ? 'p-0 pt-20 h-dvh overflow-hidden relative' : 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-28 pb-12'}`}>
+      <main id="main-content" tabIndex={-1} className={`flex-1 w-full ${activeTab === 'landing' ? 'p-0' : activeTab === 'tentang' ? 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-12' : activeTab === 'mading' ? 'p-0 pt-20 h-dvh overflow-hidden relative' : 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-28 pb-24 lg:pb-12'}`}>
         <AnimatePresence mode="wait">
           <motion.div
             key={activeTab}
@@ -345,7 +329,7 @@ export default function App() {
             transition={{ duration: 0.3, ease: 'easeInOut' }}
             className="w-full h-full"
           >
-            {renderActivePage()}
+            <Suspense fallback={<div className="ak-loading" role="status">Memuat halaman…</div>}>{renderActivePage()}</Suspense>
           </motion.div>
         </AnimatePresence>
       </main>

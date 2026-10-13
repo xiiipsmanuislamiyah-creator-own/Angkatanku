@@ -4,6 +4,8 @@ import { v2 as cloudinary } from "cloudinary";
 import { randomToken, requireThat, HttpError } from "./security";
 import type { RecordData } from "./store";
 export interface MediaProvider {
+  authorize?(asset: RecordData): Promise<{url:string;fields:Record<string,string>}>;
+  inspect?(asset: RecordData): Promise<RecordData>;
   upload(buffer: Buffer, mime: string): Promise<RecordData>;
   download(asset: RecordData): Promise<Response>;
   destroy(asset: RecordData): Promise<void>;
@@ -74,6 +76,17 @@ export function cloudinaryProvider(): MediaProvider {
     );
   }
   return {
+    async authorize(asset){
+      configured();
+      const fields={timestamp:String(Math.floor(Date.now()/1000)),public_id:asset.publicId,type:'authenticated',overwrite:'false',allowed_formats:asset.resourceType==='video'?'mp4,webm':'jpg,jpeg,png,webp'};
+      return{url:'https://api.cloudinary.com/v1_1/'+process.env.CLOUDINARY_CLOUD_NAME+'/'+asset.resourceType+'/upload',fields:{...fields,api_key:process.env.CLOUDINARY_API_KEY!,signature:cloudinary.utils.api_sign_request(fields,process.env.CLOUDINARY_API_SECRET!)}};
+    },
+    async inspect(asset){
+      configured();
+      let r:any;
+      try{r=await cloudinary.api.resource(asset.publicId,{resource_type:asset.resourceType,type:'authenticated'});}catch{throw new HttpError(502,'MEDIA_UNAVAILABLE','Upload belum dapat diverifikasi. Coba lagi.');}
+      return{publicId:r.public_id,resourceType:r.resource_type,deliveryType:r.type,format:r.format,size:r.bytes,width:r.width||0,height:r.height||0};
+    },
     async upload(buffer, mime) {
       configured();
       const publicId = "angkatanku-v2/" + randomToken();

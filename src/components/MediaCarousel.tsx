@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState,useRef } from 'react';
 import { ChevronLeft, ChevronRight, Play } from 'lucide-react';
 import LazyVideo from './LazyVideo';
 
@@ -13,10 +13,13 @@ interface MediaItem {
 interface MediaCarouselProps {
   media: MediaItem[];
   onMediaClick: (item: MediaItem) => void;
+  aspect?: string;
+  fit?: string;
 }
 
-export default function MediaCarousel({ media, onMediaClick }: MediaCarouselProps) {
+export default function MediaCarousel({ media, onMediaClick,aspect='portrait',fit='contain' }: MediaCarouselProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
+  const touch=useRef(0);
 
   if (!media || media.length === 0) return null;
 
@@ -33,7 +36,7 @@ export default function MediaCarousel({ media, onMediaClick }: MediaCarouselProp
   const currentMedia = media[currentIndex];
 
   return (
-    <div className="relative w-full aspect-video sm:aspect-[4/3] md:aspect-[16/10] bg-slate-950/90 rounded-2xl overflow-hidden group border border-slate-800/20">
+    <div className="relative w-full bg-slate-950/90 overflow-hidden group border border-slate-800/20" style={{aspectRatio:aspect==='square'?'1':aspect==='landscape'?'16/9':aspect==='original'&&media[0].width&&media[0].height?`${media[0].width}/${media[0].height}`:'4/5'}} onTouchStart={e=>{touch.current=e.touches[0].clientX;}} onTouchEnd={e=>{const delta=e.changedTouches[0].clientX-touch.current;if(Math.abs(delta)>50)setCurrentIndex(i=>Math.max(0,Math.min(media.length-1,i+(delta<0?1:-1))));}}>
       
       {/* Current Slide Content */}
       <div 
@@ -46,6 +49,7 @@ export default function MediaCarousel({ media, onMediaClick }: MediaCarouselProp
               src={currentMedia.url}
               alt={`Slide ${currentIndex + 1}`}
               className="w-full h-full object-contain"
+              style={{objectFit:fit==='cover'?'cover':'contain'}}
               loading="lazy"
               referrerPolicy="no-referrer"
             />
@@ -72,6 +76,7 @@ export default function MediaCarousel({ media, onMediaClick }: MediaCarouselProp
           <button
             type="button"
             onClick={handlePrev}
+            aria-label="Media sebelumnya"
             className="absolute left-3 top-1/2 -translate-y-1/2 p-1.5 md:p-2 rounded-full bg-black/60 hover:bg-black/80 text-white border border-white/10 transition-all opacity-0 group-hover:opacity-100 flex items-center justify-center cursor-pointer shadow-md z-10"
           >
             <ChevronLeft className="w-4 h-4 md:w-5 h-5" />
@@ -80,6 +85,7 @@ export default function MediaCarousel({ media, onMediaClick }: MediaCarouselProp
           <button
             type="button"
             onClick={handleNext}
+            aria-label="Media berikutnya"
             className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 md:p-2 rounded-full bg-black/60 hover:bg-black/80 text-white border border-white/10 transition-all opacity-0 group-hover:opacity-100 flex items-center justify-center cursor-pointer shadow-md z-10"
           >
             <ChevronRight className="w-4 h-4 md:w-5 h-5" />
@@ -93,6 +99,7 @@ export default function MediaCarousel({ media, onMediaClick }: MediaCarouselProp
           {media.map((_, idx) => (
             <button
               key={`dot-${idx}`}
+              aria-label={'Lihat media '+(idx+1)}
               type="button"
               onClick={(e) => {
                 e.stopPropagation();

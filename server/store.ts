@@ -1,5 +1,5 @@
-import { getApps, initializeApp, applicationDefault } from "firebase-admin/app";
-import { getFirestore, FieldPath } from "firebase-admin/firestore";
+import { getApps, initializeApp, applicationDefault, cert } from "firebase-admin/app";
+import { initializeFirestore, FieldPath } from "firebase-admin/firestore";
 export type RecordData = Record<string, any>;
 export type Row = { id: string; data: RecordData };
 export interface Store {
@@ -30,17 +30,23 @@ export function firebaseStore(): Store {
     throw new Error("Conflicting project configuration");
   if (process.env.FIRESTORE_EMULATOR_HOST && !projectId.startsWith("demo-"))
     throw new Error("Emulator requires demo project");
+  let credential = process.env.FIRESTORE_EMULATOR_HOST ? undefined : applicationDefault();
+  if(!process.env.FIRESTORE_EMULATOR_HOST&&process.env.FIREBASE_SERVICE_ACCOUNT_JSON){
+    const key=JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
+    if(key.project_id!==projectId)throw new Error('Firebase credential project mismatch');
+    credential=cert(key);
+  }
   const app =
     getApps()[0] ||
     initializeApp({
       projectId,
       ...(process.env.FIRESTORE_EMULATOR_HOST
         ? {}
-        : { credential: applicationDefault() }),
+        : { credential }),
     });
   if (app.options.projectId !== projectId)
     throw new Error("Firebase project mismatch");
-  const db = getFirestore(app, process.env.FIREBASE_DATABASE_ID || "(default)");
+  const db = initializeFirestore(app, {preferRest: process.env.VERCEL==='1'||process.env.FIRESTORE_PREFER_REST==='true'}, process.env.FIREBASE_DATABASE_ID || "(default)");
   return {
     async get(key) {
       const d = await db.doc(key).get();

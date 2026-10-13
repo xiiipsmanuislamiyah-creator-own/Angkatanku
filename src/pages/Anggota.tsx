@@ -444,11 +444,13 @@ export default function Anggota({ onNavigate }: { onNavigate?: (tab: string, nam
 
       {/* Main Content Area */}
       {viewMode === 'grid' ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
+        <div className="ak-directory grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 mb-12">
           {filteredStudents.length > 0 ? (
             filteredStudents.map((student) => (
               <motion.div
-                key={student.induk}
+                key={student.id||student.induk}
+                role="link" tabIndex={0} aria-label={'Profil '+student.name}
+                onKeyDown={e=>{if(e.key==='Enter'&&onNavigate&&student.id)onNavigate('public-profile',student.name,student.id);}}
                 layout
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
@@ -516,7 +518,7 @@ export default function Anggota({ onNavigate }: { onNavigate?: (tab: string, nam
               <tbody>
                 {filteredStudents.map((student, i) => (
                   <tr 
-                    key={student.induk} 
+                    key={student.id||student.induk}
                     onClick={() => { if (onNavigate && student.id) { onNavigate('public-profile', student.name || 'Profil Siswa', student.id); } else { setSelectedStudent(student); } }}
                     className={`bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer `}
                   >

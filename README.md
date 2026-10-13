@@ -1,8 +1,8 @@
 # AngkatanKU
 
-Portal React/TypeScript yang dipertahankan dari source asli. Tahap 1 menambahkan autentikasi username/password dan QR berbasis server, kontrol akses, audit serta perlindungan data pada Express + Firestore. Supabase tidak diperlukan.
+Portal React/TypeScript yang dipertahankan dari source asli. V2 mempertahankan fondasi Tahap 1: autentikasi username/password dan QR berbasis server, kontrol akses, audit serta perlindungan data pada Express + Firestore. Supabase tidak diperlukan.
 
-**Status:** implementasi dan tes lokal tersedia di branch codex/angkatanku-security-v2; produksi belum dimigrasikan/dideploy. Jangan memasang firestore.rules sendirian ke aplikasi lama.
+**Status:** fitur V2 dan 72 tes lokal tersedia di branch codex/angkatanku-security-v2; cutover produksi belum dilakukan. Lihat docs/DEPLOYMENT_STATUS.md untuk hasil preview terbaru. Jangan memasang firestore.rules sendirian ke aplikasi lama.
 
 ## Pengembangan dan pengujian
 
@@ -27,9 +27,15 @@ npm run build membersihkan seluruh dist dan menghasilkan frontend di dist/client
 
 Set FIREBASE_PROJECT_ID, FIREBASE_DATABASE_ID, APP_ORIGINS dan ADC runtime. Hapus FIRESTORE_EMULATOR_HOST di produksi. Cloudinary/Gemini hanya memakai variabel server tanpa VITE_; browser hanya boleh menerima Maps key publik yang dibatasi domain/API. .env.example berisi nama variabel tanpa rahasia.
 
-Produksi memerlukan layanan Node HTTPS dengan kapasitas upload/proxy yang sesuai. Pemilihan/pengujian hosting menunggu akses deployment. Konfigurasi proyek Vercel belum dapat dibaca; tidak ada deploy otomatis dari branch ini.
+Vercel adalah target hosting: api/index.ts menjalankan Express, dist/client menyajikan SPA, dan vercel.json mengatur rewrite/header. Signed direct upload Cloudinary menghindari batas request body function; hasil tetap diverifikasi server. Cloud Run tidak wajib. Gunakan kredensial pengganti dalam environment privat; lihat docs/DEPLOYMENT_VERCEL.md.
+
+V2 menambahkan Feed/Story/album, dua chat global dan DM berizin, Nusa Memory dengan consent/review serta UI yang lebih rapi. Game/tools baru ditunda sesuai Master PRD; kartu, scanner, foto asli dan landing sinematik tetap dipertahankan.
 
 ## Dokumentasi
+
+- [Laporan V2 dan status setiap tahap](docs/V2_REPORT_ID.md)
+- [Runtime Vercel dan cutover](docs/DEPLOYMENT_VERCEL.md)
+- [Pengukuran performa lokal](docs/PERFORMANCE.md)
 
 - [Laporan keamanan Indonesia](docs/SECURITY_REPORT_ID.md)
 - [Hasil dan batas pengujian](docs/TEST_REPORT.md)

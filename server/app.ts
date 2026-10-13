@@ -3,6 +3,7 @@ import express, {
   type Response,
   type NextFunction,
 } from "express";
+import {isIP} from "node:net";
 import multer from "multer";
 import { Readable } from "node:stream";
 import type { Store, RecordData } from "./store";
@@ -42,13 +43,18 @@ import {
   validateChange,
   moderationPermission,
   externalUrls,
+  resourceOwner,
 } from "./policy";
 import { assetIds, validateFile, type MediaProvider } from "./media";
+import { installChat, ensureUnblocked } from './chat';
+import { installKnowledge, retrieveKnowledge } from './knowledge';
+import { installSocial } from './social';
+import {installDirectMedia,directUploads} from './direct-media';
 export type Options = {
   store: Store;
   origins: string[];
   media: MediaProvider;
-  ai?: (message: string, history: any[], context: any) => Promise<string>;
+  ai?: (message: string, history: any[], context: any, signal?: AbortSignal) => Promise<string>;
 };
 const wrap =
   (fn: (req: Request, res: Response) => any) =>
@@ -63,6 +69,10 @@ export function createApp({ store, origins, media, ai }: Options) {
       process.env.TRUSTED_PROXY_CIDRS.split(",").map((s) => s.trim()),
     );
   app.use((req, res, next) => {
+    if(process.env.VERCEL==='1'){
+      const ip=req.headers['x-vercel-forwarded-for'];
+      if(typeof ip==='string'&&isIP(ip))Object.defineProperty(req,'ip',{value:ip,configurable:true});
+    }
     res.set({
       "X-Content-Type-Options": "nosniff",
       "Referrer-Policy": "same-origin",
@@ -73,7 +83,7 @@ export function createApp({ store, origins, media, ai }: Options) {
       res.set({
         "Strict-Transport-Security": "max-age=31536000",
         "Content-Security-Policy":
-          "default-src 'self'; base-uri 'none'; object-src 'none'; form-action 'self'; frame-ancestors 'self' https://aistudio.google.com; script-src 'self' https://maps.googleapis.com https://maps.gstatic.com; script-src-attr 'none'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' https: data: blob:; media-src 'self' https: blob:; connect-src 'self' https://maps.googleapis.com https://maps.gstatic.com https://*.googleapis.com; frame-src https://www.google.com https://maps.google.com; worker-src 'self' blob:",
+          "default-src 'self'; base-uri 'none'; object-src 'none'; form-action 'self'; frame-ancestors 'self' https://aistudio.google.com; script-src 'self' https://maps.googleapis.com https://maps.gstatic.com; script-src-attr 'none'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' https: data: blob:; media-src 'self' https: blob:; connect-src 'self' https://api.cloudinary.com https://maps.googleapis.com https://maps.gstatic.com https://*.googleapis.com; frame-src https://www.google.com https://maps.google.com; worker-src 'self' blob:",
       });
     next();
   });
@@ -641,6 +651,11 @@ export function createApp({ store, origins, media, ai }: Options) {
       );
       const cfg = await config();
       feature(c, cfg);
+      const requestId=req.body.requestId;
+      requireThat(requestId===undefined||validId(requestId));
+      const requestKey='security_content_requests/'+digest(p.uid+':'+c+':'+id+':'+requestId);
+      const requestHash=digest(JSON.stringify({operation,data:data||{}}));
+      if(requestId){const done=await store.get(requestKey);if(done){requireThat(done.hash===requestHash,409,'REQUEST_CONFLICT');res.json({ok:true});return;}}
       await rateLimit(
         store,
         "write:" + p.uid + ":" + c,
@@ -659,6 +674,7 @@ export function createApp({ store, origins, media, ai }: Options) {
       );
       const key = c + "/" + id,
         old = await store.get(key);
+      if(req.body.expectedUpdatedAt!==undefined) requireThat(old?.updatedAt===req.body.expectedUpdatedAt,409,'CONCURRENT_CHANGE','Konten sudah berubah. Muat ulang sebelum menyimpan.');
       if (operation === "update") requireThat(old, 404, "NOT_FOUND");
       if (["students", "teachers"].includes(c) && old?.ownerId) {
         const target = await store.get("security_accounts/" + old.ownerId);
@@ -669,7 +685,9 @@ export function createApp({ store, origins, media, ai }: Options) {
         );
       }
       const next = validateChange(c, id, data || {}, old, p, operation);
+      if(old&&resourceOwner(old)!==p.uid&&c!=='messages') fresh(p);
       if (c === "messages" && !old && next?.type === "dm") {
+        ensureUnblocked(p.uid,next.receiverId,await store.get("security_chat_preferences/"+p.uid),await store.get("security_chat_preferences/"+next.receiverId));
         const recipient = await store.get(
           "security_accounts/" + next.receiverId,
         );
@@ -710,24 +728,28 @@ export function createApp({ store, origins, media, ai }: Options) {
       requireThat(ids.length <= 40);
       const oldIds = assetIds(old),
         newIds = assetIds(next);
+      const dm = c==='messages'&&!old&&next?.type==='dm';
       await mutation(
         p,
-        [key, ...ids.map((x) => "security_media/" + x)],
+        [key,...ids.map((x)=>'security_media/'+x),...(requestId?[requestKey]:[]),...(dm?['security_accounts/'+next!.receiverId,'security_chat_preferences/'+p.uid,'security_chat_preferences/'+next!.receiverId,'security_chat_mutes/'+p.uid]:[])],
         operation === "delete" ? "content.delete" : "content.write",
         key,
-        ([latest, ...assets]) => {
+        ([latest, ...rows]) => {
+          const assets=rows.slice(0,ids.length),seen=requestId?rows[ids.length]:null;
+          if(seen){requireThat(seen.hash===requestHash,409,'REQUEST_CONFLICT');return{value:null};}
+          if(dm){const [target,a,b,mute]=rows.slice(ids.length+(requestId?1:0));requireThat(target?.status==='active',403,'RECIPIENT_UNAVAILABLE');ensureUnblocked(p.uid,next!.receiverId,a,b);requireThat(!mute||mute.until<=Date.now(),403,'CHAT_MUTED');}
           requireThat(
             JSON.stringify(latest) === JSON.stringify(old),
             409,
             "CONCURRENT_CHANGE",
           );
-          const writes: Record<string, RecordData | null> = { [key]: next };
+          const writes: Record<string, RecordData | null> = { [key]: next, ...(requestId?{[requestKey]:{hash:requestHash,createdAt:Date.now()}}:{}) };
           for (let i = 0; i < ids.length; i++) {
             const a = assets[i];
             requireThat(a, 400, "MEDIA_NOT_FOUND");
             if (newIds.includes(ids[i]))
               requireThat(
-                !a.deleted &&
+                !a.pending && !a.deleted &&
                   !a.deleting &&
                   (a.ownerId === p.uid || (a.parents || []).includes(key)),
                 403,
@@ -789,9 +811,9 @@ export function createApp({ store, origins, media, ai }: Options) {
           let out: any = { ok: true };
           if (action === "view" || action === "like") {
             const field = action === "view" ? "viewCount" : "likes_count";
-            if (!relation) {
+            if (!relation || (action === "like" && relation.active === false)) {
               next[field] = (Number(next[field]) || 0) + 1;
-              writes[rel] = { uid: p.uid, createdAt: Date.now() };
+              writes[rel] = { uid: p.uid, active: true, createdAt: Date.now() };
             }
             out[field] = Number(next[field]) || 0;
           } else if (action === "comment") {
@@ -811,6 +833,9 @@ export function createApp({ store, origins, media, ai }: Options) {
             );
             const comments = d.comments || [];
             requireThat(comments.length < 100, 409, "COMMENT_LIMIT");
+            const parentId=req.body.parentId||null;
+            if(parentId)requireThat(validId(parentId)&&comments.some((x:any)=>x.id===parentId&&!x.parentId),400,'INVALID_REPLY');
+            requireThat(!comments.some((x:any)=>x.user_id===p.uid&&x.content===req.body.content.trim()&&Date.now()-Date.parse(x.created_at)<60000),409,'DUPLICATE_COMMENT');
             const comment = {
               id: randomToken(),
               post_id: id,
@@ -818,6 +843,7 @@ export function createApp({ store, origins, media, ai }: Options) {
               user_id: p.uid,
               content: req.body.content.trim(),
               created_at: new Date().toISOString(),
+              parentId,
             };
             next.comments = [...comments, comment];
             out = { comment };
@@ -831,9 +857,8 @@ export function createApp({ store, origins, media, ai }: Options) {
               403,
               "FORBIDDEN",
             );
-            next.comments = d.comments.filter(
-              (x: any) => x.id !== req.body.commentId,
-            );
+            if(comment.user_id!==p.uid) fresh(p);
+            next.comments = d.comments.map((x:any)=>x.id===req.body.commentId?{...x,content:'',deleted:true}:x);
           }
           writes[key] = next;
           return { value: out, writes };
@@ -909,6 +934,7 @@ export function createApp({ store, origins, media, ai }: Options) {
     (req, res, next) => {
       (async () => {
         const p = writeUser(req, res);
+        requireThat(!directUploads(),400,"DIRECT_UPLOAD_REQUIRED");
         requireThat(
           !p.account.mustChangePassword,
           403,
@@ -962,6 +988,7 @@ export function createApp({ store, origins, media, ai }: Options) {
       res.json({ url: "/api/media/" + id, id });
     }),
   );
+  installDirectMedia({app,store,wrap,writeUser,mutation,config},media);
   app.get(
     "/api/media/:id",
     wrap(async (req, res) => {
@@ -969,7 +996,7 @@ export function createApp({ store, origins, media, ai }: Options) {
       requireThat(validId(id));
       const a = await store.get("security_media/" + id),
         p: Principal | null = res.locals.p;
-      requireThat(a && !a.deleted && !a.deleting, 404, "NOT_FOUND");
+      requireThat(a && !a.pending && !a.deleted && !a.deleting, 404, "NOT_FOUND");
       let allowed = !!p && a.ownerId === p.uid;
       if (!allowed)
         for (const parent of a.parents || []) {
@@ -1063,14 +1090,11 @@ export function createApp({ store, origins, media, ai }: Options) {
           writes: { [lease]: { until: Date.now() + 40000 } },
         };
       });
+      const abort=new AbortController();
+      res.once('close',()=>{if(!res.writableEnded)abort.abort();});
       try {
-        const context: any = {};
-        for (const c of ["schedules", "teachers", "achievements"])
-          context[c] = (await store.list(c, [], undefined, 50))
-            .filter((r) => visible(c, r.data, p))
-            .slice(0, 15)
-            .map((r) => project(c, r.id, r.data, p));
-        res.json({ text: await ai(message, history, context) });
+        const {context,sources} = await retrieveKnowledge(store,p,message);
+        res.json({ text: await ai(message, history, context, abort.signal), sources });
       } finally {
         await store.atomic([lease], () => ({
           value: null,
@@ -1079,6 +1103,9 @@ export function createApp({ store, origins, media, ai }: Options) {
       }
     }),
   );
+  installChat({app,store,wrap,writeUser,mutation,config});
+  installKnowledge({app,store,wrap,writeUser,mutation,config});
+  installSocial({app,store,wrap,writeUser,mutation,config});
   app.use("/api", (_req, res) =>
     res
       .status(404)

@@ -7,12 +7,14 @@ const BANNER_HERO_URL = 'https://res.cloudinary.com/dhxfke7kq/image/upload/v1791
 type SplashPhase = 'reveal' | 'gather' | 'shimmer' | 'dissolve';
 
 export default function CinematicRevealIntro() {
-  const [isVisible, setIsVisible] = useState(true);
+  const [isVisible, setIsVisible] = useState(()=>!window.matchMedia('(prefers-reduced-motion: reduce)').matches&&!sessionStorage.getItem('angkatan:intro-seen'));
   const [progress, setProgress] = useState(0);
   const [phase, setPhase] = useState<SplashPhase>('reveal');
   const [isIdleLiving, setIsIdleLiving] = useState(false);
 
   useEffect(() => {
+    if(!isVisible)return;
+    sessionStorage.setItem('angkatan:intro-seen','1');
     const prefersReduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const MIN_DURATION = prefersReduced ? 1200 : 6000;
     const startTime = performance.now();
