@@ -1,6 +1,6 @@
 # AngkatanKU — V2, Tahap 1–5
 
-Diperbarui 13 Oktober 2026. Branch `codex/angkatanku-security-v2`, draft PR #1. Master PRD dan instruksi owner mengizinkan Tahap 2–5 serta pembaruan UI; game/tools baru ditunda sesuai Master PRD. Produksi belum dimigrasikan.
+Diperbarui 15 Oktober 2026. Branch `codex/angkatanku-security-v2`, draft PR #1. Master PRD dan instruksi owner mengizinkan Tahap 2–5 serta pembaruan UI; game/tools baru ditunda sesuai Master PRD. Produksi belum dimigrasikan.
 
 ## Implementasi dan verifikasi selesai
 
@@ -14,6 +14,7 @@ Diperbarui 13 Oktober 2026. Branch `codex/angkatanku-security-v2`, draft PR #1. 
 - [x] Runtime Vercel same-origin serta signed direct upload Cloudinary dengan pemeriksaan server disiapkan; native handler gagal tertutup 503 ketika env belum tersedia.
 - [x] Akses proyek Vercel berhasil diverifikasi.
 - [x] Sampel performa lokal sebelum/sesudah; audit dependency 0 advisory.
+- [x] Kompatibilitas model Nusa diperbaiki berdasarkan generation nyata; default memakai model yang berhasil menjawab. TypeScript, build, 48 unit/API dan runtime HTTPS lokal diuji ulang.
 
 ## Penyelesaian operasional
 

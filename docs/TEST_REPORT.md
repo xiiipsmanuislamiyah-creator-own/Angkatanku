@@ -57,3 +57,9 @@ Scan terakhir terhadap 61 nilai rahasia dikenal pada 192 file source/docs/build:
 Preview Vercel pertama berhasil build namun runtime 500 dengan ERR_MODULE_NOT_FOUND pada import server/runtime. Semua import relatif backend/API diberi ekstensi .js; tes tambahan mengompilasi transitive imports memakai NodeNext dan memuatnya lewat proses Node asli tanpa tsx. 48/48 unit/API dan TypeScript/build lulus setelah perbaikan. Total menjadi 73 tes; verifikasi preview ulang dicatat di DEPLOYMENT_STATUS.md.
 
 Verifikasi HTTPS preview Vercel sesudah perbaikan native ESM: /home 200; /api/auth/session 503 JSON SERVICE_UNCONFIGURED/no-store; tiga path source/secret hanya HTML SPA, CSP/HSTS/nosniff aktif. Browser hosting tidak dapat diselesaikan karena CA proxy dan timeout; tidak dihitung sebagai PASS E2E produksi.
+
+## Pemeriksaan lanjutan 15 Oktober 2026
+
+Kompatibilitas model Nusa diverifikasi lewat generation nyata, termasuk SDK yang digunakan aplikasi. Default diperbarui ke gemini-3.5-flash-lite setelah model default lama tidak lagi menerima permintaan pada pengujian ini. TypeScript/build, 48 unit/API dan satu runtime HTTPS lokal kembali lulus. Empat tes emulator dan 20 browser pada tabel utama adalah run sebelumnya; tidak diklaim semuanya diulang pada pemeriksaan ini.
+
+Runtime HTTPS sempat gagal sebelum browser berjalan karena executable Chromium tersisa dalam bentuk terpotong. Binary resmi dipulihkan dan diverifikasi, lalu tes yang sama lulus. Tidak ada perubahan aplikasi untuk menutupi kegagalan lingkungan. Diagnosis akun/provider dan penyiapan konfigurasi disimpan pada laporan privat pemilik. Tidak ada migrasi/rules produksi yang dijalankan dalam pemeriksaan lanjutan.

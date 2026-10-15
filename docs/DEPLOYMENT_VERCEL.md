@@ -13,7 +13,7 @@ Vite di dist/client, Express melalui api/index.ts dan server/runtime.ts, API/SPA
 | CLOUDINARY_CLOUD_NAME | Cloud project yang digunakan |
 | CLOUDINARY_API_KEY / CLOUDINARY_API_SECRET | Pasangan pengganti privat |
 | GEMINI_API_KEY | Key pengganti untuk proyek ini |
-| GEMINI_MODEL | Model tersedia; default gemini-2.5-flash |
+| GEMINI_MODEL | Model tersedia; default gemini-3.5-flash-lite; periksa akses model lewat provider |
 | VITE_GOOGLE_MAPS_API_KEY | Opsional; key publik dengan restriction domain/API |
 
 Jangan set FIRESTORE_EMULATOR_HOST atau fixture pada deployment nyata. Rahasia tidak memakai awalan VITE_. VERCEL_URL/VERCEL_BRANCH_URL milik platform otomatis masuk allowlist preview; VERCEL=1 mengaktifkan REST dan direct upload. Preview fungsional memakai data terisolasi; jangan memberikan secret produksi ke seluruh PR/branch tak dipercaya.

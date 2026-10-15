@@ -30,7 +30,7 @@ export function createRuntimeApp() {
     ai: client
       ? async (message, history, context, signal) => {
           const response = await client.models.generateContent({
-            model: process.env.GEMINI_MODEL || "gemini-2.5-flash",
+            model: process.env.GEMINI_MODEL || "gemini-3.5-flash-lite",
             contents: [
               ...history.map((x) => ({
                 role: x.sender === "ai" ? "model" : "user",

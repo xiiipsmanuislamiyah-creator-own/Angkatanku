@@ -35,3 +35,5 @@
 - API Vercel harus menerima IncomingMessage/ServerResponse native; konfigurasi yang belum lengkap mengembalikan JSON 503, tanpa fallback akun dummy atau secret.
 
 - Import relatif backend/API menggunakan ekstensi .js yang dituju setelah kompilasi TypeScript. Tes native Node ESM pada tests/vercel.test.ts wajib dipertahankan; tsx/esbuild lokal dapat menyembunyikan ERR_MODULE_NOT_FOUND di Vercel.
+
+- Ping Cloudinary dan daftar model Gemini bukan bukti hak CRUD atau generation. Verifikasi operasi yang benar-benar diperlukan memakai dummy terisolasi; bedakan scope provider, koneksi jaringan pengujian, serta kesalahan aplikasi. Jangan meminta ulang seluruh kredensial sebelum memeriksa akses yang sudah tersedia.
